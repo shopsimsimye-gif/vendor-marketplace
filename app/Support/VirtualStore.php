@@ -153,7 +153,7 @@ class VirtualStore
                 $user = get_userdata($user_id);
                 if ($user && in_array('vmp_vendor', (array) $user->roles, true)) {
                     // إرجاع مصفوفة فارغة لمنع إنشاء بيانات عميل
-                    return [];
+                    return $customer_data;
                 }
             }
             return $new_customer_data;
