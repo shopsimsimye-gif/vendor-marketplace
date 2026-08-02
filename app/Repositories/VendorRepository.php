@@ -159,11 +159,14 @@ class VendorRepository implements VendorRepositoryInterface
     /**
      * تحديث بيانات بائع
      */
-    public function update(int $id, array $data): bool
+    public function update(int $id, array $data): bool|\WP_Error
     {
         $vendor = $this->find($id);
         if (!$vendor) {
-            return false;
+            return new \WP_Error("vendor_not_found", __("البائع غير موجود.", "vmp"));
+        }
+        if ($vendor->status !== "approved") {
+            return new \WP_Error("vendor_not_approved", __("لا يمكن تعديل بيانات بائع غير موافق عليه.", "vmp"));
         }
 
         $allowed = [
