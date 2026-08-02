@@ -204,7 +204,7 @@ class VendorRequestRepository implements VendorRequestRepositoryInterface
     /**
      * الموافقة على طلب - إنشاء بائع وتحديث الحالة
      */
-    public function approve(int $id, int $admin_id): int|false
+    public function approve(int $id, int $admin_id): int|false|\WP_Error
     {
         $request = $this->find($id);
         if (!$request || !in_array($request->status, ['pending', 'submitted', 'under_review'], true)) {
@@ -214,7 +214,7 @@ class VendorRequestRepository implements VendorRequestRepositoryInterface
                 $existing = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}vmp_vendors WHERE user_id = %d", $request->user_id));
                 if ($existing) return (int) $existing;
             }
-            return false;
+            return new \WP_Error('approve_failed', __('فشلت عملية الموافقة على طلب البائع.', 'vmp'));
         }
 
         global $wpdb;

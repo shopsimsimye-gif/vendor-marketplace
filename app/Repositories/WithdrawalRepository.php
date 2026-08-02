@@ -183,7 +183,7 @@ class WithdrawalRepository implements WithdrawalRepositoryInterface
      * @param int $processed_by Description index.
      * @return bool Output payload.
      */
-    public function approve(int $id, int $processed_by): bool
+    public function approve(int $id, int $processed_by): bool|\WP_Error
     {
         return $this->update($id, [
             'status'       => 'approved',

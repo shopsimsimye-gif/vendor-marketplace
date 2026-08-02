@@ -239,4 +239,42 @@ class ProductRepository implements ProductRepositoryInterface
             $limit
         ));
     }
+    /**
+     * Get products by vendor with pagination and total count.
+     *
+     * @param int   $vendor_id
+     * @param array $args {page: int, per_page: int, status: string}
+     * @return object {items: array, total: int, pages: int, page: int}
+     */
+    public function getByVendorWithCount(int $vendor_id, array $args = []): object
+    {
+        global $wpdb;
+        $per_page = max(1, $args['per_page'] ?? 20);
+        $page     = max(1, $args['page'] ?? 1);
+        $offset   = ($page - 1) * $per_page;
+        $status   = $args['status'] ?? 'active';
+
+        $where = "vendor_id = %d";
+        $params = [$vendor_id];
+
+        if ($status !== 'all') {
+            $where .= " AND status = %s";
+            $params[] = $status;
+        }
+
+        $sql = "SELECT SQL_CALC_FOUND_ROWS * FROM {$this->table} WHERE {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d";
+        $params[] = $per_page;
+        $params[] = $offset;
+
+        $items = $wpdb->get_results($wpdb->prepare($sql, ...$params));
+        $total = (int) $wpdb->get_var("SELECT FOUND_ROWS()");
+
+        return (object) [
+            'items' => $items,
+            'total' => $total,
+            'pages' => (int) ceil($total / $per_page),
+            'page'  => $page,
+        ];
+    }
+
 }
