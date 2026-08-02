@@ -39,7 +39,7 @@ interface CommissionRepositoryInterface
      * @param int $id Description index.
      * @return bool Output payload.
      */
-    public function markAsPaid(int $id): bool;
+    public function markAsPaid(int $id): bool|\WP_Error;
 
     /**
      * MarkBulkAsPaid functionality helper.

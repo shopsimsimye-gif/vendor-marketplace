@@ -14,7 +14,7 @@ interface WithdrawalRepositoryInterface
      * @param array $data Description index.
      * @return int|false Output payload.
      */
-    public function create(array $data): int|false;
+    public function create(array $data): int|false|\WP_Error;
 
     /**
      * Find functionality helper.

@@ -48,7 +48,7 @@ interface VendorRepositoryInterface
      * @param array $data البيانات المراد تحديثها
      * @return bool نجاح أو فشل العملية
      */
-    public function update(int $id, array $data): bool;
+    public function update(int $id, array $data): bool|\WP_Error;
 
     /**
      * التحقق من وجود رابط مختصر مكرر

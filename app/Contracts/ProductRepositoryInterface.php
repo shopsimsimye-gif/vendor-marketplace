@@ -11,7 +11,7 @@ interface ProductRepositoryInterface
     /**
      * ربط منتج ببائع
      */
-    public function create(int $vendor_id, int $product_id, array $data = []): int|false;
+    public function create(int $vendor_id, int $product_id, array $data = []): int|false|\WP_Error;
 
     /**
      * البحث بواسطة المعرف الداخلي
