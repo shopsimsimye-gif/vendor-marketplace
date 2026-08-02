@@ -1,0 +1,39 @@
+/* Minimal CSS for the Store Setup Wizard (mobile-first, RTL support)
+   Extended for autosave indicator and session overlay */
+:root{--primary:#0d6efd;--success:#198754;--danger:#dc3545;--muted:#6c757d}
+html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;background:#f7f7f8;color:#222}
+.vmp-container{max-width:980px;margin:24px auto;padding:16px}
+.vmp-wizard{background:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.06);overflow:hidden}
+.vmp-wizard-header{padding:20px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between}
+.vmp-wizard-header h1{margin:0;font-size:18px}
+.vmp-wizard-meta{display:flex;flex-direction:row;align-items:center;gap:12px}
+.vmp-progress{width:260px;height:18px;border-radius:9px;background:#eee;position:relative}
+.vmp-progress .bar{height:100%;background:var(--primary);width:0;border-radius:9px}
+.vmp-wizard-main{padding:20px}
+.step{display:none}
+.step.active{display:block}
+.form-row{margin-bottom:12px}
+.label{display:block;margin-bottom:6px;font-weight:600}
+.input,textarea{width:100%;padding:8px;border:1px solid #ddd;border-radius:4px}
+.row-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.button{padding:8px 14px;border:0;background:var(--primary);color:#fff;border-radius:4px;cursor:pointer}
+.button.secondary{background:#6c757d}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 12px;border-radius:6px;opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,.1);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin-left:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vmp-autosave-status{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;color:var(--muted)}
+.status-dot{font-weight:bold;margin-bottom:2px}
+.vmp-last-saved{font-size:11px;color:#666}
+
+/* Overlay for expired session */
+.vmp-session-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+.vmp-session-overlay-inner{background:#fff;padding:24px;border-radius:8px;max-width:440px;text-align:center}
+
+/* timeline */
+.vmp-status-card{background:#fff;padding:20px;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.06)}
+.timeline-item{padding:6px 0;font-weight:600}
+.status-box{margin-bottom:12px}
+.note{background:#fff3cd;padding:10px;border-radius:6px;margin:8px 0;color:#856404}
+
+@media (max-width:600px){.vmp-progress{width:160px}.vmp-autosave-status{font-size:11px}}
