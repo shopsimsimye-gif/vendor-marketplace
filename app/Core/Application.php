@@ -3,14 +3,6 @@ namespace VMP\Core;
 
 defined('ABSPATH') || exit;
 
-use VMP\Admin\VendorRequestsAdminPage;
-use VMP\Repositories\VendorRequestRepository;
-use VMP\Services\VendorRegistrationService;
-use VMP\Controllers\VendorRegistrationController;
-// [QA 2026-08-02] use خاطئ: الكلاس فعلياً في VMP\Controllers\RestVendorRegistrationController
-use VMP\Controllers\RestVendorRegistrationController;
-use VMP\Modules\VendorRegistration\Shortcodes\VendorRegistrationShortcode;
-
 /**
  * Class Application
  *
@@ -33,7 +25,7 @@ class Application
     public function __construct(string $pluginFile)
     {
         $this->pluginFile = $pluginFile;
-        $this->container = Container::getInstance(); // ✅ التصحيح
+        $this->container = Container::getInstance();
     }
 
     /**
@@ -61,39 +53,8 @@ class Application
             return new Migration();
         });
 
-        $this->container->singleton(VendorRegistrationService::class, function (): VendorRegistrationService {
-            return new VendorRegistrationService();
-        });
-
-        $this->container->singleton(VendorRegistrationController::class, function (): VendorRegistrationController {
-            return new VendorRegistrationController(
-                $this->container->make(VendorRegistrationService::class),
-                $this->container->make(Logger::class),
-                $this->container->make(ViewRenderer::class)
-            );
-        });
-
-        $this->container->singleton(RestVendorRegistrationController::class, function (): RestVendorRegistrationController {
-            return new RestVendorRegistrationController(
-                $this->container->make(VendorRegistrationService::class),
-                $this->container->make(Logger::class)
-            );
-        });
-
-        $this->container->singleton(VendorRequestsAdminPage::class, function (): VendorRequestsAdminPage {
-            return new VendorRequestsAdminPage(
-                $this->container->make(VendorRequestRepository::class),
-                $this->container->make(VendorRegistrationService::class),
-                $this->container->make(ViewRenderer::class)
-            );
-        });
-
-        $this->container->singleton(VendorRegistrationShortcode::class, function (): VendorRegistrationShortcode {
-            return new VendorRegistrationShortcode(
-                $this->container->make(ViewRenderer::class),
-                $this->container->make(VendorRegistrationService::class)
-            );
-        });
+        // NOTE: VendorRegistration classes are registered in CoreServiceProvider
+        // with proper dependencies. Do NOT register them here.
 
         $this->container->singleton('module_manager', function (): ModuleManager {
             return new ModuleManager($this->container);

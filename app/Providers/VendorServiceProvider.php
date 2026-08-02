@@ -7,35 +7,41 @@ use VMP\Contracts\VendorRepositoryInterface;
 use VMP\Core\Container;
 
 /**
- * مزود خدمات البائع – يسجل جميع الشورت كودات، الهوكات، وتحميل الأصول
- * ✅ النسخة النهائية المعتمدة مع جميع الإصلاحات والتحسينات
- * ✅ إضافة register_nonce لدعم تسجيل البائع
- * ✅ إضافة فلاتر استبعاد المنشورات الوهمية ومنع بيانات عملاء وهمية
- * 
+ * VendorServiceProvider — مسؤول عن:
+ * • تسجيل الشورت كودات (dashboard, register, store)
+ * • إضافة rewrite rules لـ /store/{slug}
+ * • تحميل الأصول (CSS/JS) للواجهة الأمامية
+ * • ربط WooCommerce hooks
+ * • عرض اسم البائع في صفحات المنتجات
+ *
  * @package VMP\Providers
  * @since 1.0.0
  */
 class VendorServiceProvider extends ServiceProvider
 {
     /**
-     * نقطة الدخول الرئيسية للمزود
-     * يتم استدعاؤها من Kernel::boot()
-     * 
+     * Boot functionality helper.
+     * ✅ يُنفذ بعد تسجيل كل الـ Providers
+     * ✅ Kernel::boot()
+     *
      * @return void
      */
     public function boot(): void
     {
-        // ─── تسجيل فلاتر استبعاد المنشورات الوهمية (ID -999 و 0) ───
-        // تمنع ظهور البيانات الوهمية في إعدادات المشرف، خرائط الموقع، وأدوات SEO
+        // ═══════════════════════════════════════════════════════════════════
+        // 1. استبعاد المنشورات الوهمية (ID -999 و 0) من الاستعلامات العامة
+        // ═══════════════════════════════════════════════════════════════════
+        // السبب: بعض الإضافات أو السكربتات تُنشئ منشورات وهمية بمعرف 0 أو -999
+        // لمنع ظهورها في المدونة أو الأرشيف أو البحث
         add_filter('pre_get_posts', function (\WP_Query $query) {
-            // لا نتدخل في استعلامات لوحة التحكم أو الاستعلامات الفرعية
+            // لا نُطبق على لوحة التحكم أو الاستعلامات الثانوية
             if (is_admin() || !$query->is_main_query()) {
                 return;
             }
 
             $excluded_ids = [-999, 0];
             $current_excluded = $query->get('post__not_in', []);
-            
+
             // دمج المعرفات المستبعدة مع الموجودة مسبقاً
             $query->set('post__not_in', array_merge($current_excluded, $excluded_ids));
         }, 20);
@@ -65,14 +71,14 @@ class VendorServiceProvider extends ServiceProvider
             $regController = new \VMP\Modules\VendorRegistration\Controllers\RegistrationController();
 
             register_rest_route('vmp/v1', '/vendor/register-guest', [
-                'methods'             => 'POST',
-                'callback'            => [$regController, 'registerGuest'],
+                'methods' => 'POST',
+                'callback' => [$regController, 'registerGuest'],
                 'permission_callback' => '__return_true',
             ]);
 
             register_rest_route('vmp/v1', '/vendor/apply', [
-                'methods'             => 'POST',
-                'callback'            => [$regController, 'apply'],
+                'methods' => 'POST',
+                'callback' => [$regController, 'apply'],
                 'permission_callback' => '__return_true',
             ]);
         });
@@ -86,8 +92,8 @@ class VendorServiceProvider extends ServiceProvider
                 if ($user_id) {
                     $user = get_userdata($user_id);
                     if ($user && in_array('vmp_vendor', (array) $user->roles, true)) {
-                        // إرجاع مصفوفة فارغة لمنع إنشاء بيانات عميل
-                        return [];
+                        // البائعون ليسوا عملاء — نترك البيانات تمر وننظف الـ meta لاحقاً
+                        // (التنظيف الفعلي في woocommerce_created_customer)
                     }
                 }
                 return $new_customer_data;
@@ -185,8 +191,8 @@ class VendorServiceProvider extends ServiceProvider
      * ✅ يسمح بتمرير متغيرات إضافية إلى القالب
      *
      * @param string $template اسم ملف القالب (مثل 'vendor-dashboard.php')
-     * @param string $page     معرف الصفحة (مثل 'dashboard', 'products', 'edit-product')
-     * @param array  $vars     متغيرات إضافية يتم تمريرها إلى القالب (مثل ['vendor' => $vendor])
+     * @param string $page معرف الصفحة (مثل 'dashboard', 'products', 'edit-product')
+     * @param array $vars متغيرات إضافية يتم تمريرها إلى القالب (مثل ['vendor' => $vendor])
      * @return string محتوى القالب
      */
     private function renderTemplate(string $template, string $page = '', array $vars = []): string
@@ -226,14 +232,14 @@ class VendorServiceProvider extends ServiceProvider
     {
         // خريطة الصفحات للوحة التحكم (يُستخدم داخل شورت كود vmp_vendor_dashboard)
         $vmp_page_map = [
-            'dashboard'     => 'vendor-dashboard.php',
-            'products'      => 'vendor-products.php',
-            'add-product'   => 'vendor-add-product.php',
+            'dashboard' => 'vendor-dashboard.php',
+            'products' => 'vendor-products.php',
+            'add-product' => 'vendor-add-product.php',
             'ai-create-product' => 'vendor-ai-create-product.php',
-            'edit-product'  => 'vendor-edit-product.php',
-            'orders'        => 'vendor-orders.php',
-            'profile'       => 'vendor-profile.php',
-            'withdrawals'   => 'vendor-withdrawals.php',
+            'edit-product' => 'vendor-edit-product.php',
+            'orders' => 'vendor-orders.php',
+            'profile' => 'vendor-profile.php',
+            'withdrawals' => 'vendor-withdrawals.php',
             'subscriptions' => 'vendor-subscriptions.php',
         ];
 
@@ -265,14 +271,12 @@ class VendorServiceProvider extends ServiceProvider
         add_shortcode('vmp_vendor_store', function ($atts): string {
             $atts = shortcode_atts(['slug' => '', 'id' => 0], $atts);
 
+            $vendor_repo = $this->container->make(VendorRepositoryInterface::class);
+
             // إذا لم يتم تمرير slug عبر الشورت كود، نأخذه من query_var
             if (empty($atts['slug'])) {
                 $atts['slug'] = get_query_var('vendor_store', '');
-            } elseif (!empty($atts['id'])) {
-                $vendor = $vendor_repo->find((int) $atts['id']);
             }
-
-            $vendor_repo = $this->container->make(VendorRepositoryInterface::class);
 
             // البحث عن البائع
             if (!empty($atts['slug'])) {
@@ -350,7 +354,7 @@ class VendorServiceProvider extends ServiceProvider
             // ─── 4. الحصول على الصفحة الحالية (موثوق مع جميع أنواع الـ permalinks) ───
             // NOTE: $GLOBALS['vmp_current_page'] is set during shortcode execution, which happens
             // AFTER wp_enqueue_scripts. So we must also check post_content for the register shortcode.
-            $current_page = $GLOBALS['vmp_current_page'] 
+            $current_page = $GLOBALS['vmp_current_page']
                 ?? sanitize_key($_GET['vmp_page'] ?? 'dashboard');
 
             // Fallback: detect register page via shortcode in post_content (for page builders/static pages)
@@ -361,17 +365,15 @@ class VendorServiceProvider extends ServiceProvider
                 }
             }
 
-            // Additional fallback: Check if current page is the vendor-register page by querying the page with the shortcode
+            // Additional fallback: Check if current page is the vendor-register page (cached)
             if ($current_page === 'dashboard') {
-                global $wpdb;
-                $register_page_id = $wpdb->get_var("SELECT ID FROM {$wpdb->posts} 
-                    WHERE post_content LIKE '%vmp_vendor_register%' 
-                    AND post_type = 'page' 
-                    AND post_status = 'publish' 
-                    LIMIT 1");
-                
+                $register_page_id = get_transient('vmp_register_page_id');
+                if (false === $register_page_id) {
+                    global $wpdb;
+                    $register_page_id = $wpdb->get_var("SELECT ID FROM {$wpdb->posts} WHERE post_content LIKE '%vmp_vendor_register%' AND post_type = 'page' AND post_status = 'publish' LIMIT 1");
+                    set_transient('vmp_register_page_id', $register_page_id ?: 0, DAY_IN_SECONDS);
+                }
                 if ($register_page_id) {
-                    // Check if we're on that page
                     $current_page_id = get_queried_object_id();
                     if ($current_page_id == $register_page_id) {
                         $current_page = 'register';
@@ -449,28 +451,28 @@ class VendorServiceProvider extends ServiceProvider
 
             // ─── 9. كائن واحد يحتوي كل شيء (بدون تكرار) ───
             wp_localize_script('vmp-public', 'vmp_public', [
-                'ajax_url'       => admin_url('admin-ajax.php'),
-                'nonce'          => wp_create_nonce('vmp_public_nonce'), // ✅ nonce عام
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('vmp_public_nonce'), // ✅ nonce عام
                 'register_nonce' => wp_create_nonce('vmp_vendor_register_nonce'), // ✅ nonce خاص بالتسجيل
-                'page'           => $current_page, // ✅ الصفحة الحالية (موثوقة)
-                'plugin_url'     => VMP_PLUGIN_URL,
-                'dashboard_url'  => home_url('/vendor-dashboard/'),
-                'strings'        => [
-                    'loading'        => __('جاري...', 'vmp'),
-                    'delete'         => __('حذف', 'vmp'),
-                    'error'          => __('حدث خطأ', 'vmp'),
-                    'conn_error'     => __('حدث خطأ في الاتصال', 'vmp'),
+                'page' => $current_page, // ✅ الصفحة الحالية (موثوقة)
+                'plugin_url' => VMP_PLUGIN_URL,
+                'dashboard_url' => home_url('/vendor-dashboard/'),
+                'strings' => [
+                    'loading' => __('جاري...', 'vmp'),
+                    'delete' => __('حذف', 'vmp'),
+                    'error' => __('حدث خطأ', 'vmp'),
+                    'conn_error' => __('حدث خطأ في الاتصال', 'vmp'),
                     'confirm_delete' => __('هل أنت متأكد من حذف هذا المنتج؟', 'vmp'),
-                    'next'           => __('التالي', 'vmp'),
-                    'prev'           => __('السابق', 'vmp'),
-                    'submit'         => __('إرسال الطلب', 'vmp'),
+                    'next' => __('التالي', 'vmp'),
+                    'prev' => __('السابق', 'vmp'),
+                    'submit' => __('إرسال الطلب', 'vmp'),
                 ],
             ]);
 
             // ─── 10. Ensure REST API settings are available for wp.media on frontend ───
             // Some themes/plugins may not print wpApiSettings in frontend; provide fallback
             wp_localize_script('vmp-public', 'wpApiSettings', [
-                'root'  => esc_url_raw(rest_url()),
+                'root' => esc_url_raw(rest_url()),
                 'nonce' => wp_create_nonce('wp_rest'),
             ]);
         });
@@ -503,12 +505,7 @@ class VendorServiceProvider extends ServiceProvider
                 return;
             }
 
-            echo '<div class="vmp-product-vendor" style="font-size: 12px; color: #64748b; margin-top: 2px; margin-bottom: 6px;">';
-            echo sprintf(
-                __('بواسطة %s', 'vmp'),
-                '<a href="' . home_url('/store/' . $vendor->store_slug) . '" style="color: #6366f1; text-decoration: none;">' . esc_html($vendor->store_name) . '</a>'
-            );
-            echo '</div>';
+            echo '<p class="vmp-vendor-name"><a href="' . esc_url(home_url('/store/' . $vendor->slug . '/')) . '">' . esc_html($vendor->store_name) . '</a></p>';
         }, 6);
 
         // ── عرض اسم البائع في صفحة المنتج الفردي (تفاصيل المنتج) ──
@@ -528,12 +525,7 @@ class VendorServiceProvider extends ServiceProvider
                 return;
             }
 
-            echo '<div class="vmp-product-vendor-single" style="font-size: 14px; color: #64748b; margin: 8px 0; border-top: 1px solid #e2e8f0; padding-top: 12px;">';
-            echo sprintf(
-                __('البائع: %s', 'vmp'),
-                '<a href="' . home_url('/store/' . $vendor->store_slug) . '" style="color: #6366f1; text-decoration: none; font-weight: 600;">' . esc_html($vendor->store_name) . '</a>'
-            );
-            echo '</div>';
+            echo '<p class="vmp-vendor-name"><a href="' . esc_url(home_url('/store/' . $vendor->slug . '/')) . '">' . esc_html($vendor->store_name) . '</a></p>';
         }, 6);
     }
 }

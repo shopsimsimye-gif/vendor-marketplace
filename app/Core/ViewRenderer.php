@@ -36,7 +36,7 @@ class ViewRenderer
         ], $data);
 
         // استخراج المتغيرات للوصول المباشر في القالب
-        extract($data);
+        extract($data, EXTR_SKIP);
 
         $templateFile = $this->templatePath . $template . '.php';
 
