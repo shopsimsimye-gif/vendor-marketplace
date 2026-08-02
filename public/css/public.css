@@ -1,0 +1,1383 @@
+/* ════════════════════════════════════════════════════════════════════
+   Vendor Marketplace — Public CSS
+   RTL | Modern Design | CSS Variables System
+   الإصدار النهائي — متوافق مع جميع القوالب
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Google Font ──────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
+
+/* ── Design Tokens ────────────────────────────────────────────────── */
+:root {
+  --vmp-primary:        #6366f1;
+  --vmp-primary-dark:   #4f46e5;
+  --vmp-primary-light:  #e0e7ff;
+  --vmp-secondary:      #a5b4fc;
+  --vmp-success:        #10b981;
+  --vmp-warning:        #f59e0b;
+  --vmp-danger:         #ef4444;
+  --vmp-info:           #3b82f6;
+
+  --vmp-bg:             #f8fafc;
+  --vmp-surface:        #ffffff;
+  --vmp-border:         #e2e8f0;
+  --vmp-text:           #1e293b;
+  --vmp-text-muted:     #64748b;
+  --vmp-text-light:     #94a3b8;
+
+  --vmp-radius-sm:      6px;
+  --vmp-radius:         12px;
+  --vmp-radius-lg:      20px;
+  --vmp-radius-full:    9999px;
+
+  --vmp-shadow-sm:      0 1px 3px rgba(0,0,0,.08);
+  --vmp-shadow:         0 4px 16px rgba(99,102,241,.12);
+  --vmp-shadow-lg:      0 12px 40px rgba(99,102,241,.18);
+
+  --vmp-transition:     0.25s cubic-bezier(.4,0,.2,1);
+
+  --vmp-font:           'Cairo', sans-serif;
+  --vmp-font-size:      15px;
+  --vmp-line-height:    1.65;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+.vmp-wrap {
+  font-family:  var(--vmp-font);
+  font-size:    var(--vmp-font-size);
+  line-height:  var(--vmp-line-height);
+  color:        var(--vmp-text);
+  direction:    rtl;
+  text-align:   right;
+  min-height:   60vh;
+}
+
+.vmp-wrap *, .vmp-wrap *::before, .vmp-wrap *::after {
+  box-sizing: border-box;
+}
+
+/* ── Layout ───────────────────────────────────────────────────────── */
+.vmp-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── Header Bar ───────────────────────────────────────────────────── */
+.vmp-header-bar {
+  background: linear-gradient(135deg, var(--vmp-primary) 0%, var(--vmp-primary-dark) 100%);
+  color: #fff;
+  padding: 36px 40px;
+  border-radius: var(--vmp-radius-lg);
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.vmp-header-bar::before {
+  content: '';
+  position: absolute;
+  top: -40px; left: -40px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+}
+.vmp-header-bar h1, .vmp-header-bar h2 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+}
+.vmp-header-bar p {
+  margin: 0;
+  opacity: .85;
+  font-size: 14px;
+}
+.vmp-header-bar .vmp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.3);
+  color: #fff;
+  padding: 4px 14px;
+  border-radius: var(--vmp-radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+/* ── Navigation Tabs ──────────────────────────────────────────────── */
+.vmp-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: var(--vmp-surface);
+  padding: 8px;
+  border-radius: var(--vmp-radius);
+  margin-bottom: 24px;
+  box-shadow: var(--vmp-shadow-sm);
+  border: 1px solid var(--vmp-border);
+}
+.vmp-nav a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--vmp-radius-sm);
+  color: var(--vmp-text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all var(--vmp-transition);
+  white-space: nowrap;
+}
+.vmp-nav a:hover {
+  background: var(--vmp-primary-light);
+  color: var(--vmp-primary);
+}
+.vmp-nav a.active, .vmp-nav a.current {
+  background: var(--vmp-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(99,102,241,.3);
+}
+.vmp-nav a svg { width: 16px; height: 16px; }
+
+/* ── Stats Grid ───────────────────────────────────────────────────── */
+.vmp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.vmp-stat-card {
+  background: var(--vmp-surface);
+  border: 1px solid var(--vmp-border);
+  border-radius: var(--vmp-radius);
+  padding: 22px 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--vmp-transition), box-shadow var(--vmp-transition);
+}
+.vmp-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--vmp-shadow);
+}
+.vmp-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--vmp-primary), var(--vmp-secondary));
+}
+.vmp-stat-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: var(--vmp-primary-light);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 20px;
+}
+.vmp-stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--vmp-primary);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.vmp-stat-label {
+  font-size: 12px;
+  color: var(--vmp-text-muted);
+  font-weight: 500;
+}
+.vmp-stat-change {
+  font-size: 11px;
+  margin-top: 4px;
+}
+.vmp-stat-change.up { color: var(--vmp-success); }
+.vmp-stat-change.down { color: var(--vmp-danger); }
+
+/* ── Dashboard Grid ───────────────────────────────────────────────── */
+.vmp-dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+.vmp-chart-container {
+  height: 300px;
+  position: relative;
+}
+.vmp-chart-placeholder {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vmp-text-muted);
+  font-size: 14px;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────── */
+.vmp-card {
+  background: var(--vmp-surface);
+  border: 1px solid var(--vmp-border);
+  border-radius: var(--vmp-radius);
+  padding: 28px;
+  margin-bottom: 20px;
+  box-shadow: var(--vmp-shadow-sm);
+}
+.vmp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--vmp-border);
+}
+.vmp-card-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--vmp-text);
+  margin: 0;
+}
+
+/* ── Order List (Dashboard) ───────────────────────────────────────── */
+.vmp-link-small {
+  font-size: 12px;
+  color: var(--vmp-primary);
+  text-decoration: none;
+}
+.vmp-link-small:hover {
+  text-decoration: underline;
+}
+.vmp-empty-orders {
+  text-align: center;
+  color: var(--vmp-text-muted);
+  font-size: 13px;
+}
+.vmp-order-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.vmp-order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--vmp-border);
+}
+.vmp-order-item:last-child {
+  border-bottom: none;
+}
+.vmp-order-id {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+.vmp-order-date {
+  font-size: 11px;
+  color: var(--vmp-text-muted);
+}
+.vmp-order-earnings {
+  text-align: right;
+}
+.vmp-order-earnings strong {
+  color: var(--vmp-primary);
+  font-size: 14px;
+}
+
+/* ── Plan Card (Dashboard) ───────────────────────────────────────── */
+.vmp-plan-card-highlight {
+  background: linear-gradient(135deg, var(--vmp-primary-light), #fff);
+}
+.vmp-plan-content {
+  padding-top: 16px;
+}
+.vmp-plan-name-large {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--vmp-primary);
+  margin-bottom: 8px;
+}
+.vmp-plan-details {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--vmp-text-muted);
+}
+.vmp-plan-details li {
+  margin-bottom: 6px;
+}
+
+/* ── AI Product Assistant ─────────────────────────────────────────── */
+.vmp-muted {
+  margin: 6px 0 0;
+  color: var(--vmp-text-muted);
+  font-size: 13px;
+}
+.vmp-ai-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) 1fr;
+  gap: 22px;
+}
+.vmp-ai-upload-panel,
+.vmp-ai-progress-panel {
+  border: 1px solid var(--vmp-border);
+  border-radius: 8px;
+  padding: 18px;
+  background: #fff;
+}
+.vmp-ai-dropzone {
+  display: flex;
+  min-height: 220px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px dashed var(--vmp-primary);
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: center;
+  padding: 22px;
+}
+.vmp-ai-dropzone input {
+  display: none;
+}
+.vmp-ai-dropzone-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vmp-primary);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+}
+.vmp-ai-dropzone small {
+  color: var(--vmp-text-muted);
+}
+.vmp-ai-image-preview {
+  margin: 14px 0;
+  border: 1px solid var(--vmp-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.vmp-ai-image-preview img {
+  width: 100%;
+  display: block;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.vmp-ai-progress-header,
+.vmp-ai-section-title,
+.vmp-ai-inline-action,
+.vmp-ai-field-tools,
+.vmp-ai-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.vmp-ai-progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--vmp-border);
+  overflow: hidden;
+  margin: 14px 0 18px;
+}
+.vmp-ai-progress-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--vmp-primary), var(--vmp-success));
+  transition: width var(--vmp-transition);
+}
+.vmp-ai-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.vmp-ai-steps li {
+  border: 1px solid var(--vmp-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--vmp-text-muted);
+  background: #fff;
+}
+.vmp-ai-steps li.active {
+  border-color: var(--vmp-primary);
+  color: var(--vmp-primary);
+  background: var(--vmp-primary-light);
+  font-weight: 700;
+}
+.vmp-ai-steps li.done {
+  border-color: var(--vmp-success);
+  color: var(--vmp-success);
+}
+.vmp-ai-status-message {
+  margin-top: 16px;
+  color: var(--vmp-text-muted);
+  font-size: 13px;
+}
+.vmp-ai-review-card .vmp-card-header {
+  align-items: flex-start;
+}
+.vmp-ai-confidence {
+  min-width: 72px;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: var(--vmp-success);
+  font-weight: 800;
+}
+.vmp-ai-inline-action .vmp-input {
+  flex: 1;
+}
+.vmp-ai-field-tools {
+  justify-content: flex-start;
+  margin-top: 10px;
+  color: var(--vmp-text-muted);
+  font-size: 13px;
+}
+.vmp-ai-review-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 18px 0;
+}
+.vmp-ai-review-grid section {
+  border: 1px solid var(--vmp-border);
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+}
+.vmp-ai-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.vmp-ai-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: var(--vmp-text);
+  font-size: 12px;
+}
+.vmp-ai-tag.muted {
+  color: var(--vmp-text-muted);
+}
+.vmp-ai-meta {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--vmp-border);
+  padding-top: 16px;
+  color: var(--vmp-text-muted);
+  font-size: 13px;
+}
+.vmp-ai-warnings {
+  margin: 16px 0;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+@media (max-width: 780px) {
+  .vmp-ai-layout,
+  .vmp-ai-review-grid {
+    grid-template-columns: 1fr;
+  }
+  .vmp-ai-inline-action,
+  .vmp-ai-section-title,
+  .vmp-ai-meta {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+/* ── Forms ────────────────────────────────────────────────────────── */
+.vmp-form-group {
+  margin-bottom: 20px;
+}
+.vmp-form-group label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--vmp-text);
+  margin-bottom: 7px;
+}
+.vmp-form-group label .required {
+  color: var(--vmp-danger);
+  margin-right: 2px;
+}
+.vmp-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.vmp-input,
+.vmp-textarea,
+.vmp-select,
+.vmp-wrap input[type="text"],
+.vmp-wrap input[type="email"],
+.vmp-wrap input[type="tel"],
+.vmp-wrap input[type="number"],
+.vmp-wrap input[type="password"],
+.vmp-wrap input[type="url"],
+.vmp-wrap textarea,
+.vmp-wrap select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--vmp-border);
+  border-radius: var(--vmp-radius-sm);
+  font-family: var(--vmp-font);
+  font-size: 14px;
+  color: var(--vmp-text);
+  background: #fafbff;
+  transition: border-color var(--vmp-transition), box-shadow var(--vmp-transition);
+  outline: none;
+  direction: rtl;
+}
+.vmp-input:focus,
+.vmp-textarea:focus,
+.vmp-select:focus,
+.vmp-wrap input:focus,
+.vmp-wrap textarea:focus,
+.vmp-wrap select:focus {
+  border-color: var(--vmp-primary);
+  box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+  background: #fff;
+}
+.vmp-input-hint {
+  font-size: 12px;
+  color: var(--vmp-text-muted);
+  margin-top: 5px;
+}
+.vmp-input-error {
+  font-size: 12px;
+  color: var(--vmp-danger);
+  margin-top: 5px;
+  display: none;
+}
+.vmp-input-error.show { display: block; }
+
+/* ── Buttons ──────────────────────────────────────────────────────── */
+.vmp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border: none;
+  border-radius: var(--vmp-radius-sm);
+  font-family: var(--vmp-font);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--vmp-transition);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.vmp-btn:disabled { opacity: .55; cursor: not-allowed; }
+.vmp-btn-primary {
+  background: linear-gradient(135deg, var(--vmp-primary), var(--vmp-primary-dark));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(99,102,241,.3);
+}
+.vmp-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99,102,241,.4);
+}
+.vmp-btn-secondary {
+  background: var(--vmp-primary-light);
+  color: var(--vmp-primary);
+}
+.vmp-btn-secondary:hover:not(:disabled) {
+  background: var(--vmp-primary);
+  color: #fff;
+}
+.vmp-btn-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(16,185,129,.3);
+}
+.vmp-btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+}
+.vmp-btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--vmp-border);
+  color: var(--vmp-text-muted);
+}
+.vmp-btn-outline:hover:not(:disabled) {
+  border-color: var(--vmp-primary);
+  color: var(--vmp-primary);
+}
+.vmp-btn-sm { padding: 7px 16px; font-size: 12px; }
+.vmp-btn-lg { padding: 15px 32px; font-size: 16px; }
+.vmp-btn-block { width: 100%; }
+.vmp-btn-icon { padding: 9px; border-radius: 8px; }
+.vmp-btn svg { width: 16px; height: 16px; }
+
+/* ── Badges & Status ──────────────────────────────────────────────── */
+.vmp-badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--vmp-radius-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+.vmp-badge-status::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.vmp-status-approved, .vmp-status-completed, .vmp-status-active, .vmp-status-paid {
+  background: rgba(16,185,129,.1);
+  color: #059669;
+}
+.vmp-status-pending {
+  background: rgba(245,158,11,.1);
+  color: #d97706;
+}
+.vmp-status-rejected, .vmp-status-cancelled, .vmp-status-failed {
+  background: rgba(239,68,68,.1);
+  color: #dc2626;
+}
+.vmp-status-suspended {
+  background: rgba(100,116,139,.1);
+  color: #64748b;
+}
+
+/* ── Table ────────────────────────────────────────────────────────── */
+.vmp-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--vmp-radius);
+  border: 1px solid var(--vmp-border);
+}
+.vmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.vmp-table thead th {
+  background: var(--vmp-bg);
+  padding: 12px 16px;
+  font-weight: 700;
+  color: var(--vmp-text-muted);
+  text-align: right;
+  border-bottom: 1px solid var(--vmp-border);
+  white-space: nowrap;
+}
+.vmp-table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--vmp-border);
+  vertical-align: middle;
+}
+.vmp-table tbody tr:last-child td { border-bottom: none; }
+.vmp-table tbody tr:hover { background: rgba(99,102,241,.03); }
+.vmp-table .vmp-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* ── Multi-Step Form ──────────────────────────────────────────────── */
+.vmp-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 36px;
+  gap: 0;
+}
+.vmp-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vmp-text-light);
+  position: relative;
+}
+.vmp-step-num {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--vmp-border);
+  color: var(--vmp-text-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all var(--vmp-transition);
+  flex-shrink: 0;
+}
+.vmp-step.active .vmp-step-num {
+  background: var(--vmp-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(99,102,241,.35);
+}
+.vmp-step.done .vmp-step-num {
+  background: var(--vmp-success);
+  color: #fff;
+}
+.vmp-step.active, .vmp-step.done { color: var(--vmp-text); }
+.vmp-step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--vmp-border);
+  margin: 0 8px;
+  min-width: 40px;
+}
+.vmp-step-line.done { background: var(--vmp-success); }
+
+.vmp-step-content { display: none; }
+.vmp-step-content.active { display: block; animation: vmpFadeIn .3s ease; }
+
+/* ── Error state for required fields ────────────────────────────── */
+.vmp-input.vmp-input-error,
+.vmp-select.vmp-input-error,
+.vmp-textarea.vmp-input-error {
+  border-color: var(--vmp-danger) !important;
+  box-shadow: 0 0 0 3px rgba(239,68,68,.15);
+  animation: vmpShake .3s ease;
+}
+@keyframes vmpShake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-4px); }
+  75%       { transform: translateX(4px); }
+}
+
+/* ── Pricing / Subscription Plans ────────────────────────────────── */
+.vmp-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  padding: 20px 0;
+}
+.vmp-plan-card {
+  background: var(--vmp-surface);
+  border: 2px solid var(--vmp-border);
+  border-radius: var(--vmp-radius);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  transition: all var(--vmp-transition);
+}
+.vmp-plan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--vmp-shadow);
+}
+.vmp-plan-card.vmp-plan-current {
+  border-color: var(--vmp-primary);
+  box-shadow: 0 0 0 4px rgba(99,102,241,.12);
+}
+.vmp-plan-card.vmp-plan-free {
+  border-color: var(--vmp-success);
+}
+.vmp-plan-badge {
+  position: absolute;
+  top: -10px;
+  right: 16px;
+  background: var(--vmp-primary);
+  color: #fff;
+  padding: 2px 14px;
+  border-radius: var(--vmp-radius-full);
+  font-size: 11px;
+  font-weight: 700;
+}
+.vmp-plan-badge-free {
+  background: var(--vmp-success);
+}
+.vmp-plan-header {
+  margin-bottom: 8px;
+}
+.vmp-plan-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--vmp-text);
+}
+.vmp-plan-price {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--vmp-primary);
+  margin: 8px 0;
+}
+.vmp-plan-price-free {
+  color: var(--vmp-success);
+}
+.vmp-plan-price-period {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--vmp-text-muted);
+}
+.vmp-plan-description {
+  font-size: 13px;
+  color: var(--vmp-text-muted);
+  margin: 0;
+}
+.vmp-plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vmp-plan-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vmp-text-muted);
+}
+.vmp-plan-feature-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.vmp-plan-action {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   STORE PAGE — تصميم صفحة المتجر (المحسّن)
+   ════════════════════════════════════════════════════════════════════ */
+
+.vmp-store-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── غلاف المتجر ── */
+.vmp-store-cover {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+.vmp-store-cover-img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+}
+.vmp-store-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 70%);
+  display: flex;
+  align-items: flex-end;
+  padding: 30px;
+}
+.vmp-store-cover-content {
+  color: #fff;
+}
+.vmp-store-title {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0;
+}
+.vmp-store-desc {
+  font-size: 14px;
+  opacity: 0.9;
+  max-width: 600px;
+  margin: 6px 0 0;
+}
+
+/* ── معلومات المتجر ── */
+.vmp-store-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+.vmp-store-info-card {
+  background: var(--vmp-surface);
+  border: 1px solid var(--vmp-border);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+}
+.vmp-store-logo-wrap {
+  display: flex;
+  justify-content: center;
+}
+.vmp-store-logo-img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--vmp-primary-light);
+}
+.vmp-store-contact,
+.vmp-store-address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.vmp-store-contact a {
+  color: var(--vmp-primary);
+  text-decoration: none;
+}
+.vmp-store-contact a:hover {
+  text-decoration: underline;
+}
+.vmp-store-map iframe {
+  width: 100%;
+  height: 180px;
+  border: 0;
+  border-radius: 12px;
+  margin-top: 6px;
+}
+
+/* ── روابط التواصل ── */
+.vmp-store-social {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.vmp-social-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vmp-bg);
+  font-size: 18px;
+  text-decoration: none;
+  transition: 0.2s;
+}
+.vmp-social-btn.fb:hover {
+  background: #1877f2;
+  color: #fff;
+}
+.vmp-social-btn.ig:hover {
+  background: #e4405f;
+  color: #fff;
+}
+.vmp-social-btn.tw:hover {
+  background: #000;
+  color: #fff;
+}
+.vmp-social-btn.yt:hover {
+  background: #ff0000;
+  color: #fff;
+}
+
+/* ── فيديو ── */
+.vmp-store-video {
+  background: var(--vmp-surface);
+  border: 1px solid var(--vmp-border);
+  border-radius: 16px;
+  padding: 24px;
+}
+.vmp-video-wrapper {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.vmp-video-wrapper iframe,
+.vmp-video-wrapper video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ── قائمة المنتجات ── */
+.vmp-store-products {
+  margin-top: 30px;
+}
+.vmp-products-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+.vmp-products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+}
+.vmp-product-card {
+  background: var(--vmp-surface);
+  border: 1px solid var(--vmp-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: 0.2s;
+}
+.vmp-product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.vmp-product-img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  display: block;
+}
+.vmp-product-body {
+  padding: 16px;
+}
+.vmp-product-name {
+  font-weight: 700;
+  font-size: 14px;
+  margin: 0 0 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vmp-product-name a {
+  color: inherit;
+  text-decoration: none;
+}
+.vmp-product-name a:hover {
+  color: var(--vmp-primary);
+}
+
+/* ✅ اسم البائع بخط صغير تحت اسم المنتج */
+.vmp-product-vendor {
+  font-size: 12px;
+  color: var(--vmp-text-muted);
+  margin-top: 2px;
+  margin-bottom: 6px;
+}
+.vmp-product-vendor a {
+  color: var(--vmp-primary);
+  text-decoration: none;
+}
+.vmp-product-vendor a:hover {
+  text-decoration: underline;
+}
+
+.vmp-product-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--vmp-primary);
+}
+.vmp-product-price del {
+  font-size: 13px;
+  color: var(--vmp-text-light);
+  font-weight: 400;
+}
+
+/* ── أزرار المنتج ── */
+.vmp-product-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.vmp-product-actions .vmp-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.2s, transform 0.1s;
+}
+.vmp-product-actions .vmp-btn:hover {
+  transform: translateY(-2px);
+}
+.vmp-product-actions .vmp-btn-primary {
+  background: var(--vmp-primary);
+  color: #fff;
+}
+.vmp-product-actions .vmp-btn-primary:hover {
+  background: var(--vmp-primary-dark);
+}
+.vmp-product-actions .vmp-btn-success {
+  background: #25D366;
+  color: #fff;
+}
+.vmp-product-actions .vmp-btn-success:hover {
+  background: #128C7E;
+}
+
+/* ── WhatsApp Button ──────────────────────────────────────────────── */
+.vmp-whatsapp-wrap {
+  margin: 16px 0;
+}
+.vmp-whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: #fff !important;
+  border-radius: var(--vmp-radius-full);
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none !important;
+  transition: all var(--vmp-transition);
+  box-shadow: 0 4px 15px rgba(37,211,102,.35);
+}
+.vmp-whatsapp-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(37,211,102,.45);
+}
+.vmp-wa-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+/* ── Notice / Alert ───────────────────────────────────────────────── */
+.vmp-notice {
+  padding: 12px 18px;
+  border-radius: var(--vmp-radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  border-right: 4px solid currentColor;
+}
+.vmp-notice-success { background: rgba(16,185,129,.08); color: #059669; }
+.vmp-notice-error   { background: rgba(239,68,68,.08);  color: #dc2626; }
+.vmp-notice-warning { background: rgba(245,158,11,.08); color: #d97706; }
+.vmp-notice-info    { background: rgba(59,130,246,.08); color: #2563eb; }
+.vmp-notice svg     { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ── Global Notice (toast) ────────────────────────────────────────── */
+#vmp-global-notice {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  z-index: 99999;
+  min-width: 300px;
+  max-width: 480px;
+  padding: 14px 22px;
+  border-radius: var(--vmp-radius);
+  font-family: var(--vmp-font);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: all .35s cubic-bezier(.34,1.56,.64,1);
+  box-shadow: 0 16px 40px rgba(0,0,0,.15);
+}
+#vmp-global-notice.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+#vmp-global-notice.success { background: var(--vmp-success); color: #fff; }
+#vmp-global-notice.error   { background: var(--vmp-danger);  color: #fff; }
+#vmp-global-notice.warning { background: var(--vmp-warning); color: #fff; }
+#vmp-global-notice.info    { background: var(--vmp-info);    color: #fff; }
+
+/* ── Loading Overlay ──────────────────────────────────────────────── */
+.vmp-loading {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,.75);
+  backdrop-filter: blur(4px);
+  z-index: 99998;
+  align-items: center;
+  justify-content: center;
+}
+.vmp-loading.show { display: flex; }
+.vmp-spinner {
+  width: 44px; height: 44px;
+  border: 4px solid var(--vmp-primary-light);
+  border-top-color: var(--vmp-primary);
+  border-radius: 50%;
+  animation: vmpSpin .7s linear infinite;
+}
+
+/* ── Image Upload ─────────────────────────────────────────────────── */
+.vmp-image-upload {
+  border: 2px dashed var(--vmp-border);
+  border-radius: var(--vmp-radius);
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--vmp-transition);
+  position: relative;
+}
+.vmp-image-upload:hover {
+  border-color: var(--vmp-primary);
+  background: var(--vmp-primary-light);
+}
+.vmp-image-upload .upload-icon { font-size: 36px; margin-bottom: 10px; }
+.vmp-image-upload p { color: var(--vmp-text-muted); font-size: 13px; margin: 0; }
+.vmp-image-preview {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: var(--vmp-radius-sm);
+  display: none;
+}
+.vmp-image-preview.show { display: block; }
+
+/* ── Empty State ──────────────────────────────────────────────────── */
+.vmp-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--vmp-text-muted);
+}
+.vmp-empty-icon { font-size: 56px; margin-bottom: 16px; }
+.vmp-empty h3 { font-size: 18px; font-weight: 700; color: var(--vmp-text); margin: 0 0 8px; }
+.vmp-empty p { font-size: 14px; margin: 0 0 20px; }
+
+/* ── Pagination ───────────────────────────────────────────────────── */
+.vmp-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 24px;
+}
+.vmp-pagination a, .vmp-pagination span {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: var(--vmp-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--vmp-text-muted);
+  border: 1px solid var(--vmp-border);
+  transition: all var(--vmp-transition);
+}
+.vmp-pagination a:hover { border-color: var(--vmp-primary); color: var(--vmp-primary); }
+.vmp-pagination .current { background: var(--vmp-primary); color: #fff; border-color: var(--vmp-primary); }
+
+/* ── Withdrawal ───────────────────────────────────────────────────── */
+.vmp-balance-card {
+  background: linear-gradient(135deg, var(--vmp-primary), var(--vmp-primary-dark));
+  color: #fff;
+  border-radius: var(--vmp-radius);
+  padding: 28px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--vmp-shadow);
+}
+.vmp-balance-label { font-size: 14px; opacity: .8; margin-bottom: 4px; }
+.vmp-balance-amount { font-size: 36px; font-weight: 800; }
+
+/* ── Animations ───────────────────────────────────────────────────── */
+@keyframes vmpSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes vmpFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes vmpSlideDown {
+  from { opacity: 0; max-height: 0; }
+  to   { opacity: 1; max-height: 500px; }
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 992px) {
+  .vmp-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .vmp-header-bar { padding: 24px 20px; }
+  .vmp-header-bar h1 { font-size: 20px; }
+  .vmp-nav { gap: 2px; }
+  .vmp-nav a { padding: 7px 12px; font-size: 12px; }
+  .vmp-nav a span { display: none; }
+  .vmp-form-row { grid-template-columns: 1fr; }
+  .vmp-products-grid { grid-template-columns: 1fr 1fr; --vmp-cols: 2; }
+  .vmp-stats-grid { grid-template-columns: 1fr 1fr; }
+  .vmp-card { padding: 18px; }
+  .vmp-plans-grid { grid-template-columns: 1fr; }
+  
+  /* ── استجابة صفحة المتجر ── */
+  .vmp-store-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .vmp-store-cover-img {
+    height: 160px;
+  }
+  .vmp-store-title {
+    font-size: 22px;
+  }
+  .vmp-store-logo-img {
+    width: 70px;
+    height: 70px;
+  }
+  .vmp-products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+  .vmp-product-actions {
+    flex-direction: column;
+  }
+  .vmp-product-actions .vmp-btn {
+    min-width: 100%;
+  }
+  .vmp-store-cover-overlay {
+    padding: 16px;
+  }
+  .vmp-whatsapp-btn {
+    font-size: 13px;
+    padding: 10px 18px;
+  }
+  
+  /* ── الأنماط القديمة للتوافق ── */
+  .vmp-store-logo {
+    width: 70px;
+    height: 70px;
+    top: -35px;
+    right: 16px;
+  }
+  .vmp-store-info { padding: 50px 16px 16px; }
+  .vmp-store-banner { height: 160px; margin-bottom: -40px; }
+  .vmp-store-social { flex-direction: column; align-items: stretch; }
+}
+
+@media (max-width: 480px) {
+  .vmp-products-grid { grid-template-columns: 1fr; --vmp-cols: 1; }
+  .vmp-stats-grid { grid-template-columns: 1fr; }
+  .vmp-steps { flex-direction: column; gap: 8px; }
+  .vmp-step-line { display: none; }
+  .vmp-store-banner { height: 120px; margin-bottom: -30px; }
+  .vmp-store-logo {
+    width: 60px;
+    height: 60px;
+    top: -30px;
+    right: 12px;
+  }
+}

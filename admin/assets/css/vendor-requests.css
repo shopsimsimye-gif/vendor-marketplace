@@ -1,0 +1,283 @@
+/**
+ * Vendor Requests Admin Styles
+ */
+
+.vmp-vendor-requests-wrap {
+    max-width: 1400px;
+}
+
+.vmp-filters-bar {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.vmp-filter-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.vmp-filter-select,
+.vmp-filter-search input {
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.vmp-filter-select:focus,
+.vmp-filter-search input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.vmp-filter-search {
+    flex: 1;
+    max-width: 400px;
+}
+
+.vmp-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.vmp-requests-table {
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+
+.vmp-requests-table th,
+.vmp-requests-table td {
+    padding: 12px;
+    vertical-align: middle;
+}
+
+.vmp-requests-table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.vmp-requests-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.vmp-status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.vmp-status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.vmp-status-approved {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.vmp-status-rejected {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.vmp-actions-cell {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.vmp-actions-cell .button-small {
+    padding: 4px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.vmp-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+}
+
+.vmp-empty-state .dashicons {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.vmp-pagination {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+/* Modals */
+.vmp-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.vmp-modal[hidden] {
+    display: none;
+}
+
+.vmp-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.vmp-modal-content {
+    position: relative;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: vmp-modal-in 0.2s ease;
+}
+
+@keyframes vmp-modal-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.vmp-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.vmp-modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.vmp-modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 4px;
+    border-radius: 6px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.vmp-modal-close:hover {
+    background: #f3f4f6;
+    color: #1f2937;
+}
+
+.vmp-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.vmp-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.vmp-modal-small {
+    max-width: 500px;
+}
+
+.vmp-loading {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+}
+
+.vmp-request-detail {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.vmp-detail-field {
+    margin-bottom: 0;
+}
+
+.vmp-detail-full {
+    grid-column: 1 / -1;
+}
+
+.vmp-detail-label {
+    font-size: 12px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.vmp-detail-value {
+    font-weight: 500;
+    color: #1f2937;
+    word-break: break-word;
+}
+
+.vmp-detail-image {
+    max-width: 200px;
+    max-height: 150px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+#vmp-reject-reason {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+}
+
+#vmp-reject-reason:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* RTL Support */
+[dir="rtl"] .vmp-vendor-requests-wrap {
+    direction: rtl;
+}
+
+[dir="rtl"] .vmp-actions-cell {
+    flex-direction: row-reverse;
+}

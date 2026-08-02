@@ -1,0 +1,349 @@
+/* ════════════════════════════════════════════════════════════════════
+   Vendor Marketplace — Store Page Styles (vendor-store.css)
+   ════════════════════════════════════════════════════════════════════ */
+
+.vmp-store-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.vmp-store-cover {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+.vmp-store-cover-img {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+}
+.vmp-store-cover-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 70%);
+    display: flex;
+    align-items: flex-end;
+    padding: 30px;
+}
+.vmp-store-cover-content {
+    color: #fff;
+}
+.vmp-store-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 0;
+}
+.vmp-store-desc {
+    font-size: 14px;
+    opacity: 0.9;
+    max-width: 600px;
+    margin: 6px 0 0;
+}
+
+.vmp-store-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 40px;
+}
+.vmp-store-info-card {
+    background: var(--vmp-surface);
+    border: 1px solid var(--vmp-border);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+}
+.vmp-store-logo-wrap {
+    display: flex;
+    justify-content: center;
+}
+.vmp-store-logo-img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--vmp-primary-light);
+}
+.vmp-store-contact,
+.vmp-store-address {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+.vmp-store-contact a {
+    color: var(--vmp-primary);
+    text-decoration: none;
+}
+.vmp-store-contact a:hover {
+    text-decoration: underline;
+}
+.vmp-store-map iframe {
+    width: 100%;
+    height: 180px;
+    border: 0;
+    border-radius: 12px;
+    margin-top: 6px;
+}
+
+.vmp-store-social {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+.vmp-social-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--vmp-bg);
+    font-size: 18px;
+    text-decoration: none;
+    transition: 0.2s;
+}
+.vmp-social-btn.fb:hover {
+    background: #1877f2;
+    color: #fff;
+}
+.vmp-social-btn.ig:hover {
+    background: #e4405f;
+    color: #fff;
+}
+.vmp-social-btn.tw:hover {
+    background: #000;
+    color: #fff;
+}
+.vmp-social-btn.yt:hover {
+    background: #ff0000;
+    color: #fff;
+}
+
+.vmp-whatsapp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    background: #25D366;
+    color: #fff !important;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none !important;
+    transition: 0.2s;
+    box-shadow: 0 4px 15px rgba(37, 211, 102, .35);
+}
+.vmp-whatsapp-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(37, 211, 102, .45);
+}
+
+.vmp-store-video {
+    background: var(--vmp-surface);
+    border: 1px solid var(--vmp-border);
+    border-radius: 16px;
+    padding: 24px;
+}
+.vmp-video-wrapper {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    border-radius: 12px;
+}
+.vmp-video-wrapper iframe,
+.vmp-video-wrapper video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.vmp-store-products {
+    margin-top: 30px;
+}
+.vmp-products-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+.vmp-products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 24px;
+}
+.vmp-product-card {
+    background: var(--vmp-surface);
+    border: 1px solid var(--vmp-border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: 0.2s;
+}
+.vmp-product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.vmp-product-img {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    display: block;
+}
+.vmp-product-body {
+    padding: 16px;
+}
+.vmp-product-name {
+    font-weight: 700;
+    font-size: 14px;
+    margin: 0 0 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.vmp-product-name a {
+    color: inherit;
+    text-decoration: none;
+}
+.vmp-product-name a:hover {
+    color: var(--vmp-primary);
+}
+
+.vmp-product-vendor {
+    font-size: 12px;
+    color: var(--vmp-text-muted);
+    margin-top: 2px;
+    margin-bottom: 6px;
+}
+.vmp-product-vendor a {
+    color: var(--vmp-primary);
+    text-decoration: none;
+}
+.vmp-product-vendor a:hover {
+    text-decoration: underline;
+}
+
+.vmp-product-price {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--vmp-primary);
+}
+.vmp-product-price del {
+    font-size: 13px;
+    color: var(--vmp-text-light);
+    font-weight: 400;
+}
+
+.vmp-product-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+.vmp-product-actions .vmp-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: background 0.2s, transform 0.1s;
+}
+.vmp-product-actions .vmp-btn:hover {
+    transform: translateY(-2px);
+}
+.vmp-product-actions .vmp-btn-primary {
+    background: var(--vmp-primary);
+    color: #fff;
+}
+.vmp-product-actions .vmp-btn-primary:hover {
+    background: var(--vmp-primary-dark);
+}
+.vmp-product-actions .vmp-btn-success {
+    background: #25D366;
+    color: #fff;
+}
+.vmp-product-actions .vmp-btn-success:hover {
+    background: #128C7E;
+}
+
+.vmp-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--vmp-text-muted);
+}
+
+.vmp-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 24px;
+}
+.vmp-pagination a,
+.vmp-pagination span {
+    display: inline-block;
+    padding: 8px 14px;
+    border: 1px solid var(--vmp-border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--vmp-text-muted);
+    text-decoration: none;
+    transition: 0.2s;
+}
+.vmp-pagination a:hover {
+    background: var(--vmp-primary);
+    color: #fff;
+    border-color: var(--vmp-primary);
+}
+.vmp-pagination .current {
+    background: var(--vmp-primary);
+    color: #fff;
+    border-color: var(--vmp-primary);
+}
+
+@media (max-width: 768px) {
+    .vmp-store-info-grid {
+        grid-template-columns: 1fr;
+    }
+    .vmp-store-cover-img {
+        height: 160px;
+    }
+    .vmp-store-title {
+        font-size: 22px;
+    }
+    .vmp-store-logo-img {
+        width: 70px;
+        height: 70px;
+    }
+    .vmp-products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 16px;
+    }
+    .vmp-product-actions {
+        flex-direction: column;
+    }
+    .vmp-product-actions .vmp-btn {
+        min-width: 100%;
+    }
+    .vmp-store-cover-overlay {
+        padding: 16px;
+    }
+    .vmp-whatsapp-btn {
+        font-size: 13px;
+        padding: 10px 18px;
+    }
+}

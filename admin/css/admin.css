@@ -1,0 +1,455 @@
+/* ════════════════════════════════════════════════════════════════════
+   Vendor Marketplace — Admin CSS
+   RTL | Modern WP Admin Integration
+   ════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --vmp-admin-primary: #2271b1;
+    --vmp-admin-primary-dark: #135e96;
+    --vmp-admin-bg: #f0f0f1;
+    --vmp-admin-surface: #ffffff;
+    --vmp-admin-border: #c3c4c7;
+    --vmp-admin-text: #3c434a;
+    --vmp-admin-muted: #646970;
+    
+    --vmp-success: #00a32a;
+    --vmp-warning: #dba617;
+    --vmp-danger: #d63638;
+    
+    --vmp-radius: 4px;
+    --vmp-radius-lg: 8px;
+    --vmp-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    --vmp-shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.vmp-admin-wrap {
+    margin: 20px 20px 20px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    color: var(--vmp-admin-text);
+    direction: rtl;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.vmp-admin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+.vmp-admin-header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+    color: #1d2327;
+}
+
+/* ── Stats Cards ──────────────────────────────────────────────────── */
+.vmp-admin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+}
+.vmp-admin-stat-card {
+    background: var(--vmp-admin-surface);
+    border: 1px solid var(--vmp-admin-border);
+    border-radius: var(--vmp-radius-lg);
+    padding: 24px;
+    box-shadow: var(--vmp-shadow);
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+.vmp-admin-stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--vmp-radius-lg);
+    background: rgba(34, 113, 177, 0.1);
+    color: var(--vmp-admin-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+.vmp-admin-stat-content h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--vmp-admin-muted);
+    font-weight: 500;
+}
+.vmp-admin-stat-content .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1d2327;
+    line-height: 1;
+}
+
+/* ── Layout & Cards ───────────────────────────────────────────────── */
+.vmp-admin-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+@media (max-width: 1200px) {
+    .vmp-admin-grid { grid-template-columns: 1fr; }
+}
+
+.vmp-admin-card {
+    background: var(--vmp-admin-surface);
+    border: 1px solid var(--vmp-admin-border);
+    border-radius: var(--vmp-radius-lg);
+    box-shadow: var(--vmp-shadow);
+    margin-bottom: 20px;
+}
+.vmp-admin-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--vmp-admin-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.vmp-admin-card-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+.vmp-admin-card-body {
+    padding: 20px;
+}
+
+/* ── Tables ───────────────────────────────────────────────────────── */
+.vmp-admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.vmp-admin-table th,
+.vmp-admin-table td {
+    padding: 12px 16px;
+    text-align: right;
+    border-bottom: 1px solid var(--vmp-admin-border);
+}
+.vmp-admin-table th {
+    background: #f6f7f7;
+    font-weight: 600;
+    color: #1d2327;
+}
+.vmp-admin-table tr:last-child td {
+    border-bottom: none;
+}
+.vmp-admin-table tbody tr:nth-child(even) {
+    background: #f9f9f9;
+}
+.vmp-admin-table .actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* ── Status Badges ────────────────────────────────────────────────── */
+.vmp-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.vmp-status-active, .vmp-status-approved, .vmp-status-completed, .vmp-status-paid {
+    background: #e5f5e8;
+    color: var(--vmp-success);
+}
+.vmp-status-pending {
+    background: #fdf5d3;
+    color: var(--vmp-warning);
+}
+.vmp-status-rejected, .vmp-status-cancelled {
+    background: #fce8e8;
+    color: var(--vmp-danger);
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+.vmp-admin-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--vmp-admin-border);
+    margin-bottom: 24px;
+}
+.vmp-admin-tab {
+    padding: 12px 24px;
+    text-decoration: none;
+    color: var(--vmp-admin-muted);
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+}
+.vmp-admin-tab:hover,
+.vmp-admin-tab:focus {
+    color: var(--vmp-admin-primary);
+    box-shadow: none;
+    outline: none;
+}
+.vmp-admin-tab.active {
+    color: var(--vmp-admin-primary);
+    border-bottom-color: var(--vmp-admin-primary);
+}
+
+/* ── Forms ────────────────────────────────────────────────────────── */
+.vmp-admin-form-group {
+    margin-bottom: 20px;
+}
+.vmp-admin-form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #1d2327;
+}
+.vmp-admin-form-group .description {
+    color: var(--vmp-admin-muted);
+    font-size: 13px;
+    margin-top: 4px;
+}
+.vmp-admin-input,
+.vmp-admin-select,
+.vmp-admin-textarea {
+    width: 100%;
+    max-width: 400px;
+}
+.vmp-admin-textarea {
+    height: 120px;
+}
+
+/* ── ✅ المميزات (Features Toggles) ───────────────────────────────── */
+.vmp-features-section {
+    margin: 16px 0 8px;
+}
+.vmp-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+.vmp-feature-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    position: relative;
+    user-select: none;
+}
+.vmp-feature-toggle:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+.vmp-feature-toggle .vmp-feature-input {
+    display: none;
+}
+.vmp-toggle-slider {
+    width: 36px;
+    height: 20px;
+    background: #cbd5e1;
+    border-radius: 9999px;
+    position: relative;
+    transition: background 0.3s;
+    flex-shrink: 0;
+}
+.vmp-toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #ffffff;
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.vmp-feature-input:checked + .vmp-toggle-slider {
+    background: #6366f1;
+}
+.vmp-feature-input:checked + .vmp-toggle-slider::after {
+    transform: translateX(16px);
+}
+.vmp-feature-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e293b;
+}
+.vmp-feature-icon {
+    font-size: 16px;
+}
+
+/* ── ✅ حقول النموذج المتقدمة (مودال الخطة) ────────────────────── */
+.vmp-field-group {
+    margin-bottom: 16px;
+}
+.vmp-field-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.vmp-field-group .required {
+    color: #ef4444;
+}
+.vmp-field {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fafbff;
+}
+.vmp-field:focus {
+    border-color: #6366f1;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+.vmp-hint {
+    display: block;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+.vmp-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* ── Modals ───────────────────────────────────────────────────────── */
+.vmp-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+.vmp-modal-overlay.show { display: flex; }
+.vmp-modal {
+    background: #fff;
+    border-radius: var(--vmp-radius-lg);
+    width: 90%;
+    max-width: 650px;
+    box-shadow: var(--vmp-shadow-lg);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+.vmp-modal-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--vmp-admin-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.vmp-modal-header h2 { margin: 0; font-size: 18px; }
+.vmp-modal-close {
+    background: none; border: none; font-size: 24px; cursor: pointer; color: var(--vmp-admin-muted);
+}
+.vmp-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+}
+.vmp-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--vmp-admin-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* ── أزرار المودال ────────────────────────────────────────────────── */
+.vmp-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+.vmp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+.vmp-btn-primary {
+    background: #6366f1;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+.vmp-btn-primary:hover {
+    background: #4f46e5;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
+}
+.vmp-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+.vmp-btn-secondary {
+    background: #f1f5f9;
+    color: #475569;
+}
+.vmp-btn-secondary:hover {
+    background: #e2e8f0;
+}
+
+/* ── Loading ──────────────────────────────────────────────────────── */
+.vmp-admin-loading {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,0.7);
+    z-index: 100000;
+    align-items: center;
+    justify-content: center;
+}
+.vmp-admin-loading.show { display: flex; }
+
+/* ── استجابة للموبايل ────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .vmp-row {
+        grid-template-columns: 1fr;
+    }
+    .vmp-modal {
+        width: 95%;
+        margin: 10px;
+    }
+    .vmp-features-grid {
+        grid-template-columns: 1fr;
+        padding: 12px;
+    }
+    .vmp-actions {
+        flex-wrap: wrap;
+    }
+    .vmp-actions .vmp-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}

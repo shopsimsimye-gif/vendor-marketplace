@@ -1,0 +1,530 @@
+<?php
+namespace VMP\Providers;
+
+defined('ABSPATH') || exit;
+
+use VMP\Contracts\CommissionRepositoryInterface;
+use VMP\Contracts\OrderRepositoryInterface;
+use VMP\Contracts\ProductRepositoryInterface;
+use VMP\Contracts\SubscriptionPlanRepositoryInterface;
+use VMP\Contracts\SubscriptionRepositoryInterface;
+use VMP\Contracts\VendorRepositoryInterface;
+use VMP\Contracts\VendorRequestRepositoryInterface;
+use VMP\Contracts\WithdrawalRepositoryInterface;
+use VMP\Repositories\CommissionRepository;
+use VMP\Repositories\OrderRepository;
+use VMP\Repositories\ProductRepository;
+use VMP\Repositories\SubscriptionPlanRepository;
+use VMP\Repositories\SubscriptionRepository;
+use VMP\Repositories\VendorRepository;
+use VMP\Repositories\VendorRequestRepository;
+use VMP\Repositories\WithdrawalRepository;
+use VMP\Services\VendorService;
+use VMP\Services\NotificationService;
+use VMP\Core\EventManager;
+use VMP\Core\Logger;
+use VMP\Infrastructure\Dispatcher\ExceptionHandler;
+use VMP\Infrastructure\Dispatcher\RouteRegistry;
+use VMP\Infrastructure\Dispatcher\ControllerMethodResolver;
+use VMP\Infrastructure\Dispatcher\ActionDispatcher;
+use VMP\Controllers\VendorController;
+use VMP\Controllers\ProductController;
+use VMP\Controllers\OrderController;
+use VMP\Controllers\CommissionController;
+use VMP\Controllers\SubscriptionController;
+use VMP\Controllers\WithdrawalController;
+use VMP\Controllers\WhatsappController;
+use VMP\Controllers\VendorRegistrationController;
+use VMP\Controllers\RestVendorController;
+use VMP\Services\ProductService;
+use VMP\Services\OrderService;
+use VMP\Services\CommissionService;
+use VMP\Services\SubscriptionService;
+use VMP\Services\WithdrawalService;
+use VMP\Services\WhatsappService;
+
+use VMP\Core\Queue\QueueManager;
+
+/**
+ * Class CoreServiceProvider
+ *
+ * Description of administrative platform component CoreServiceProvider.
+ *
+ * @package vendor-marketplace
+ */
+class CoreServiceProvider extends ServiceProvider
+{
+    /**
+     * Register functionality helper.
+     *
+     * @return void Output payload.
+     */
+    public function register(): void
+    {
+        // ─── Config ───────────────────────────────────────────────────────────
+        $this->container->singleton('config', function (): \VMP\Support\Config {
+            return \VMP\Support\Config::getInstance(VMP_PLUGIN_DIR . 'app/Config');
+        });
+
+        // ─── Load Global Helpers (vmp_get_product_vendor_id, vmp_get_vendor, etc.) ──────────────
+        $this->loadHelpers();
+
+        // ─── Core Utilities ───────────────────────────────────────────────────
+        $this->container->singleton(EventManager::class, static fn(): EventManager => new EventManager());
+        $this->container->singleton(Logger::class, static fn(): Logger => new Logger());
+        $this->container->singleton(QueueManager::class, function (): QueueManager {
+            return new QueueManager(
+                $this->container,
+                $this->container->make(Logger::class),
+                $GLOBALS['wpdb']
+            );
+        });
+
+        // ─── Repositories (Concrete Classes as Singletons) ────────────────────
+        $this->container->singleton(
+            SubscriptionPlanRepository::class,
+            static fn(): SubscriptionPlanRepository => new SubscriptionPlanRepository()
+        );
+
+        $this->container->singleton(
+            SubscriptionRepository::class,
+            fn(): SubscriptionRepository => new SubscriptionRepository(
+                $this->container->make(SubscriptionPlanRepositoryInterface::class)
+            )
+        );
+
+        $this->container->singleton(
+            VendorRepository::class,
+            static fn(): VendorRepository => new VendorRepository()
+        );
+
+        $this->container->singleton(
+            ProductRepository::class,
+            static fn(): ProductRepository => new ProductRepository()
+        );
+
+        $this->container->singleton(
+            OrderRepository::class,
+            static fn(): OrderRepository => new OrderRepository()
+        );
+
+        $this->container->singleton(
+            CommissionRepository::class,
+            static fn(): CommissionRepository => new CommissionRepository()
+        );
+
+        $this->container->singleton(
+            WithdrawalRepository::class,
+            static fn(): WithdrawalRepository => new WithdrawalRepository()
+        );
+
+        $this->container->singleton(
+            VendorRequestRepository::class,
+            static fn(): VendorRequestRepository => new VendorRequestRepository()
+        );
+
+        // ─── Interface Bindings (Interfaces → Concrete Classes with Decorators) ───
+        $this->container->singleton(VendorRepositoryInterface::class, function () {
+            return new \VMP\Repositories\Cached\CachedVendorRepository(
+                $this->container->make(VendorRepository::class)
+            );
+        });
+
+        $this->container->singleton(ProductRepositoryInterface::class, function () {
+            return new \VMP\Repositories\Cached\CachedProductRepository(
+                $this->container->make(ProductRepository::class)
+            );
+        });
+
+        $this->container->singleton(VendorRequestRepositoryInterface::class, function () {
+            return $this->container->make(VendorRequestRepository::class);
+        });
+
+        $interfaceMap = [
+            OrderRepositoryInterface::class           => OrderRepository::class,
+            CommissionRepositoryInterface::class      => CommissionRepository::class,
+            WithdrawalRepositoryInterface::class      => WithdrawalRepository::class,
+            SubscriptionRepositoryInterface::class    => SubscriptionRepository::class,
+            SubscriptionPlanRepositoryInterface::class=> SubscriptionPlanRepository::class,
+        ];
+
+        foreach ($interfaceMap as $interface => $concrete) {
+            $this->container->singleton(
+                $interface,
+                fn(): object => $this->container->make($concrete)
+            );
+        }
+
+        // ─── Services ─────────────────────────────────────────────────────────
+        $this->container->singleton(
+            VendorService::class,
+            fn(): VendorService => new VendorService(
+                $this->container->make(VendorRepositoryInterface::class),
+                $this->container->make(VendorRequestRepositoryInterface::class),
+                $this->container->make(ProductRepositoryInterface::class),
+                $this->container->make(OrderRepositoryInterface::class),
+                $this->container->make(EventManager::class),
+                $this->container->make(Logger::class)
+            )
+        );
+
+        $this->container->singleton(
+            NotificationService::class,
+            fn(): NotificationService => new NotificationService(
+                $this->container->make(VendorRepositoryInterface::class),
+                $this->container->make(VendorRequestRepositoryInterface::class),
+                $this->container->make(QueueManager::class)
+            )
+        );
+
+        $this->container->singleton(
+            ProductService::class,
+            fn(): ProductService => new ProductService(
+                $this->container->make(ProductRepositoryInterface::class),
+                $this->container->make(VendorRepositoryInterface::class),
+                $this->container->make(EventManager::class),
+                $this->container->make(Logger::class),
+                $GLOBALS['wpdb']
+            )
+        );
+
+        $this->container->singleton(
+            OrderService::class,
+            fn(): OrderService => new OrderService(
+                $this->container->make(OrderRepositoryInterface::class),
+                $this->container->make(CommissionRepositoryInterface::class),
+                $this->container->make(VendorRepositoryInterface::class),
+                $this->container->make(ProductRepositoryInterface::class),
+                $this->container->make(CommissionService::class),
+                $this->container->make(EventManager::class),
+                $this->container->make(Logger::class)
+            )
+        );
+
+        // ─── Dispatcher Infrastructure ────────────────────────────────────────
+        $this->container->singleton(ExceptionHandler::class, function () {
+            return new ExceptionHandler($this->container->make(Logger::class));
+        });
+
+        $this->container->singleton(RouteRegistry::class, function () {
+            return new RouteRegistry();
+        });
+
+        $this->container->singleton(ControllerMethodResolver::class, function () {
+            return new ControllerMethodResolver();
+        });
+
+        $this->container->singleton(ActionDispatcher::class, function () {
+            return new ActionDispatcher(
+                $this->container,
+                $this->container->make(RouteRegistry::class),
+                $this->container->make(ExceptionHandler::class),
+                $this->container->make(ControllerMethodResolver::class)
+            );
+        });
+
+        // ─── Controllers ──────────────────────────────────────────────────────
+        $this->container->singleton(VendorController::class, function () {
+            return new VendorController($this->container->make(VendorService::class));
+        });
+
+        // ✅ Fixed: ProductController expects 2 arguments (ProductService, Logger)
+        $this->container->singleton(ProductController::class, function () {
+            return new ProductController(
+                $this->container->make(ProductService::class),
+                $this->container->make(Logger::class)
+            );
+        });
+
+        $this->container->singleton(OrderController::class, function () {
+            return new OrderController($this->container->make(OrderService::class));
+        });
+
+        $this->container->singleton(CommissionController::class, function () {
+            return new CommissionController($this->container->make(CommissionService::class));
+        });
+
+        $this->container->singleton(SubscriptionController::class, function () {
+            return new SubscriptionController(
+                $this->container->make(SubscriptionService::class),
+                $this->container->make(SubscriptionPlanRepositoryInterface::class)
+            );
+        });
+
+        $this->container->singleton(WithdrawalController::class, function () {
+            return new WithdrawalController(
+                $this->container->make(WithdrawalService::class),
+                $this->container->make(WithdrawalRepositoryInterface::class)
+            );
+        });
+
+        $this->container->singleton(VendorRegistrationController::class, function () {
+            return new VendorRegistrationController(
+                $this->container->make(VendorRegistrationService::class),
+                $this->container->make(Logger::class),
+                $this->container->make(ViewRenderer::class)
+            );
+        });
+
+        $this->container->singleton(WhatsappController::class, function () {
+            return new WhatsappController($this->container->make(WhatsappService::class));
+        });
+
+        // Register Routes
+        $this->registerRoutes();
+
+        // ─── ✅ تسجيل معالج AJAX لإعدادات الذكاء الاصطناعي ───────────────────
+        add_action('wp_ajax_vmp_admin_save_ai_settings', function() {
+            // 1. التحقق من nonce
+            if (!check_ajax_referer('vmp_admin_nonce', 'nonce', false)) {
+                wp_send_json_error(['message' => __('رمز الأمان غير صحيح.', 'vmp')]);
+                return;
+            }
+
+            // 2. التحقق من صلاحية المشرف
+            if (!current_user_can('vmp_manage_settings')) {
+                wp_send_json_error(['message' => __('غير مصرح لك.', 'vmp')]);
+                return;
+            }
+
+            // 3. استقبال البيانات
+            $settings = isset($_POST['vmp_ai_settings']) ? $_POST['vmp_ai_settings'] : [];
+            if (empty($settings)) {
+                wp_send_json_error(['message' => __('لم يتم إرسال أي إعدادات.', 'vmp')]);
+                return;
+            }
+
+            // 4. تنظيف البيانات حسب نوع كل حقل
+            $old_settings = get_option('vmp_ai_settings', []);
+            $sanitized = [];
+
+            foreach ($settings as $key => $value) {
+                switch ($key) {
+                    case 'cache_enabled':
+                    case 'require_human_review':
+                        $sanitized[$key] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+                        break;
+                    case 'cache_ttl':
+                    case 'monthly_vendor_request_limit':
+                        $sanitized[$key] = absint($value);
+                        break;
+                    case 'monthly_vendor_cost_limit':
+                        $sanitized[$key] = (float) $value;
+                        break;
+                    case 'openai_api_key':
+                        // 🔐 تشفير المفتاح قبل الحفظ
+                        if (empty($value) && isset($old_settings[$key])) {
+                            $sanitized[$key] = $old_settings[$key]; // Keep existing (already encrypted)
+                            $sanitized[$key . '_encrypted'] = $old_settings[$key . '_encrypted'] ?? false;
+                        } elseif (!empty($value)) {
+                            $cleanValue = sanitize_text_field($value);
+                            try {
+                                /** @var \VMP\Modules\AI\Security\SecretManager $secretManager */
+                                $secretManager = \VMP\Core\Container::getInstance()->make(
+                                    \VMP\Modules\AI\Security\SecretManager::class
+                                );
+                                $encrypted = $secretManager->encryptSecret($cleanValue);
+                                $sanitized[$key] = base64_encode(json_encode($encrypted, JSON_THROW_ON_ERROR));
+                                $sanitized[$key . '_encrypted'] = true;
+                            } catch (\Throwable $e) {
+                                wp_send_json_error([
+                                    'message' => __('فشل تشفير مفتاح API. يرجى التحقق من إعدادات التشفير (VMP_ENCRYPTION_KEY في wp-config.php).', 'vmp'),
+                                    'error' => $e->getMessage(),
+                                ]);
+                                return;
+                            }
+                        }
+                        break;
+                    case 'openai_organization':
+                    case 'openai_model':
+                    case 'openai_vision_model':
+                    case 'openai_image_model':
+                    case 'default_provider':
+                    case 'vision_provider':
+                    case 'llm_provider':
+                    case 'search_provider':
+                    case 'image_generation_provider':
+                    case 'default_status':
+                        $sanitized[$key] = sanitize_text_field($value);
+                        break;
+                    default:
+                        $sanitized[$key] = sanitize_text_field($value);
+                        break;
+                }
+            }
+
+            // 5. دمج الإعدادات القديمة مع الجديدة للحفاظ على القيم غير المرسلة
+            $merged = array_merge($old_settings, $sanitized);
+
+            // 6. حفظ الإعدادات
+            update_option('vmp_ai_settings', $merged);
+
+            // 7. تسجيل الحدث (للتتبع)
+            if (function_exists('vmp_log_info')) {
+                vmp_log_info(
+                    __('تم حفظ إعدادات الذكاء الاصطناعي.', 'vmp'),
+                    ['user_id' => get_current_user_id()],
+                    'AI'
+                );
+            } else {
+                error_log('[VMP] AI Settings saved by user ID: ' . get_current_user_id());
+            }
+
+            // 8. إرجاع استجابة نجاح
+            wp_send_json_success(['message' => __('تم حفظ إعدادات الذكاء الاصطناعي بنجاح.', 'vmp')]);
+        });
+
+        // ─── ✅ تسجيل معالج اختبار الاتصال بالذكاء الاصطناعي ──────────────────
+        add_action('wp_ajax_vmp_ai_test_connection', function() {
+            check_ajax_referer('vmp_admin_nonce', 'nonce');
+
+            if (!current_user_can('vmp_manage_settings')) {
+                wp_send_json_error(['message' => __('غير مصرح لك.', 'vmp')]);
+                return;
+            }
+
+            $settings = get_option('vmp_ai_settings', []);
+            $api_key_raw = $settings['openai_api_key'] ?? '';
+
+            // 🔐 فك تشفير المفتاح إذا كان مشفراً
+            $api_key = $api_key_raw;
+            if (!empty($api_key_raw) && !empty($settings['openai_api_key_encrypted'])) {
+                try {
+                    /** @var \VMP\Modules\AI\Security\SecretManager $secretManager */
+                    $secretManager = \VMP\Core\Container::getInstance()->make(
+                        \VMP\Modules\AI\Security\SecretManager::class
+                    );
+                    $payload = json_decode(base64_decode($api_key_raw), true);
+                    if (is_array($payload) && isset($payload['ciphertext'], $payload['iv'], $payload['tag'])) {
+                        $api_key = $secretManager->decryptSecret(
+                            $payload['ciphertext'],
+                            $payload['iv'],
+                            $payload['tag']
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    error_log('VMP: Failed to decrypt API key: ' . $e->getMessage());
+                }
+            }
+
+            if (empty($api_key)) {
+                wp_send_json_error(['message' => __('مفتاح OpenAI API غير موجود.', 'vmp')]);
+                return;
+            }
+
+            // اختبار الاتصال بـ OpenAI
+            $response = wp_remote_post('https://api.openai.com/v1/models', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $api_key,
+                    'Content-Type' => 'application/json',
+                ],
+                'timeout' => 10,
+            ]);
+
+            if (is_wp_error($response)) {
+                wp_send_json_error(['message' => __('فشل الاتصال: ', 'vmp') . $response->get_error_message()]);
+                return;
+            }
+
+            $code = wp_remote_retrieve_response_code($response);
+            if ($code === 200) {
+                wp_send_json_success(['message' => __('✅ الاتصال بـ OpenAI يعمل بنجاح.', 'vmp')]);
+            } else {
+                $body = wp_remote_retrieve_body($response);
+                $data = json_decode($body, true);
+                $error_msg = $data['error']['message'] ?? __('خطأ غير معروف.', 'vmp');
+                wp_send_json_error(['message' => __('❌ فشل الاتصال: ', 'vmp') . $error_msg]);
+            }
+        });
+    }
+
+    /**
+     * RegisterRoutes functionality helper.
+     *
+     * @return void Output payload.
+     */
+    protected function registerRoutes(): void
+    {
+        /** @var RouteRegistry $registry */
+        $registry = $this->container->make(RouteRegistry::class);
+
+        // Vendor Routes
+        $registry->ajax('vmp_vendor_register',        VendorController::class, 'registerVendor',  true,  'vmp_vendor_registration_nonce', 'register_nonce');
+        $registry->ajax('vmp_vendor_update_profile',  VendorController::class, 'updateProfile',   false, 'vmp_public_nonce');
+        $registry->ajax('vmp_admin_approve_vendor',   VendorController::class, 'adminApprove',    false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_reject_vendor',    VendorController::class, 'adminReject',     false, 'vmp_admin_nonce');
+
+        // ─── ✅ المسارات الجديدة للـ Multi-step Registration ─────────────────────────────
+        $registry->ajax('vmp_vendor_registration_step1',    VendorRegistrationController::class, 'step1VerifyUser',  true, 'vmp_vendor_registration_nonce');
+        $registry->ajax('vmp_vendor_registration_step2',    VendorRegistrationController::class, 'step2StoreData',   true, 'vmp_vendor_registration_nonce');
+        $registry->ajax('vmp_vendor_registration_submit',   VendorRegistrationController::class, 'submitRequest',    true, 'vmp_vendor_registration_nonce');
+        $registry->ajax('vmp_check_store_slug',             VendorRegistrationController::class, 'checkSlugAvailability',        true);
+        $registry->ajax('vmp_check_email',                  VendorRegistrationController::class, 'checkEmailAvailability',       true);
+
+        // Product Routes
+        $registry->ajax('vmp_add_product',            ProductController::class, 'addProduct',     false, 'vmp_public_nonce');
+        $registry->ajax('vmp_update_product',         ProductController::class, 'updateProduct',  false, 'vmp_public_nonce');
+        $registry->ajax('vmp_delete_product',         ProductController::class, 'deleteProduct',  false, 'vmp_public_nonce');
+        $registry->ajax('vmp_admin_approve_product',  ProductController::class, 'adminApprove',   false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_reject_product',   ProductController::class, 'adminReject',    false, 'vmp_admin_nonce');
+
+        // Order Routes
+        $registry->ajax('vmp_get_vendor_orders',      OrderController::class, 'adminGetVendorOrders', false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_get_order_details',      OrderController::class, 'getOrderDetails',      false, 'vmp_public_nonce');
+        $registry->ajax('vmp_vendor_orders',          OrderController::class, 'getVendorOrders',      false, 'vmp_public_nonce');
+
+        // Commission Routes
+        $registry->ajax('vmp_get_commissions',        CommissionController::class, 'adminGetCommissions', false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_pay_commission',         CommissionController::class, 'payCommission',       false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_bulk_pay_commissions',   CommissionController::class, 'bulkPayCommissions',  false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_get_commission_stats',   CommissionController::class, 'adminGetStats',       false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_vendor_get_commissions', CommissionController::class, 'vendorGetCommissions',false, 'vmp_public_nonce');
+        $registry->ajax('vmp_vendor_commission_chart',CommissionController::class, 'vendorGetChart',      false, 'vmp_public_nonce');
+
+        // Subscription Routes
+        $registry->ajax('vmp_get_plans',                    SubscriptionController::class, 'getPlans',                   true);  // عام — لا يحتاج nonce
+        $registry->ajax('vmp_subscribe',                    SubscriptionController::class, 'subscribe',                  false, 'vmp_public_nonce');
+        $registry->ajax('vmp_upgrade_plan',                 SubscriptionController::class, 'subscribe',                  false, 'vmp_public_nonce');
+        $registry->ajax('vmp_cancel_subscription',          SubscriptionController::class, 'cancelSubscription',         false, 'vmp_public_nonce');
+        $registry->ajax('vmp_request_plan_change',          SubscriptionController::class, 'requestPlanChange',          false, 'vmp_public_nonce');
+        $registry->ajax('vmp_cancel_plan_change',           SubscriptionController::class, 'cancelPlanChange',           false, 'vmp_public_nonce');
+        $registry->ajax('vmp_admin_create_plan',            SubscriptionController::class, 'adminCreatePlan',            false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_update_plan',            SubscriptionController::class, 'adminUpdatePlan',            false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_delete_plan',            SubscriptionController::class, 'adminDeletePlan',            false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_get_vendor_subscription',SubscriptionController::class, 'adminGetVendorSubscription', false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_get_pending_plan_changes',     SubscriptionController::class, 'adminGetPendingPlanChanges', false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_approve_plan_change',    SubscriptionController::class, 'adminApprovePlanChange',     false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_reject_plan_change',     SubscriptionController::class, 'adminRejectPlanChange',      false, 'vmp_admin_nonce');
+
+        // Withdrawal Routes
+        $registry->ajax('vmp_request_withdrawal',       WithdrawalController::class, 'requestWithdrawal',    false, 'vmp_public_nonce');
+        $registry->ajax('vmp_admin_get_withdrawals',    WithdrawalController::class, 'adminGetWithdrawals',  false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_process_withdrawal', WithdrawalController::class, 'adminProcessWithdrawal',false,'vmp_admin_nonce');
+
+        // WhatsApp Routes
+        $registry->ajax('vmp_track_whatsapp_click',          WhatsappController::class, 'trackClick',           true);  // عام — لا يحتاج nonce
+        $registry->ajax('vmp_save_whatsapp_settings',        WhatsappController::class, 'saveSettings',         false, 'vmp_public_nonce');
+        $registry->ajax('vmp_get_whatsapp_stats',            WhatsappController::class, 'getStats',             false, 'vmp_public_nonce');
+        $registry->ajax('vmp_admin_whatsapp_settings',       WhatsappController::class, 'adminSettings',        false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_get_whatsapp_stats',      WhatsappController::class, 'adminGetStats',        false, 'vmp_admin_nonce');
+    }
+
+    public function boot(): void
+    {
+        /** @var ActionDispatcher $dispatcher */
+        $dispatcher = $this->container->make(ActionDispatcher::class);
+        $dispatcher->registerAjaxHooks();
+    }
+
+    /**
+     * Load global helper functions from Support/helpers.php
+     * This makes vmp_get_product_vendor_id(), vmp_get_vendor(), etc. available globally
+     */
+    protected function loadHelpers(): void
+    {
+        $helpersFile = VMP_PLUGIN_DIR . 'app/Support/helpers.php';
+        if (is_file($helpersFile)) {
+            require_once $helpersFile;
+        }
+    }
+}

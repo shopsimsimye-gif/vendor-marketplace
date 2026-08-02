@@ -1,0 +1,778 @@
+/* ════════════════════════════════════════════════════════════════════
+   Vendor Marketplace — Multi-step Registration Styles
+   RTL | Modern Design | CSS Variables System
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Register Wrapper ─────────────────────────────────────────────── */
+.vmp-register-wrap {
+  min-height: 100vh;
+  padding: 40px 0;
+}
+
+.vmp-register-wrap .vmp-header-bar {
+  background: linear-gradient(135deg, var(--vmp-primary) 0%, var(--vmp-primary-dark) 100%);
+  border-radius: var(--vmp-radius-lg);
+  margin-bottom: 32px;
+}
+
+.vmp-register-wrap .vmp-card {
+  border-radius: var(--vmp-radius-lg);
+  box-shadow: var(--vmp-shadow);
+  padding: 40px;
+}
+
+/* ── Progress Steps ───────────────────────────────────────────────── */
+.vmp-progress-steps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  margin: 0 0 40px;
+  position: relative;
+  padding: 0 12px;
+}
+
+.vmp-progress-steps::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--vmp-border);
+  z-index: 0;
+}
+
+.vmp-progress-step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  max-width: 140px;
+}
+
+.vmp-step-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--vmp-surface);
+  border: 3px solid var(--vmp-border);
+  color: var(--vmp-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all var(--vmp-transition);
+  position: relative;
+}
+
+.vmp-progress-step.active .vmp-step-circle {
+  border-color: var(--vmp-primary);
+  color: var(--vmp-primary);
+  background: var(--vmp-primary-light);
+}
+
+.vmp-progress-step.completed .vmp-step-circle {
+  background: var(--vmp-success);
+  border-color: var(--vmp-success);
+  color: #fff;
+}
+
+.vmp-progress-step.completed .vmp-step-circle::after {
+  content: '\f147';
+  font-family: 'dashicons';
+  font-size: 16px;
+}
+
+.vmp-step-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--vmp-text-muted);
+  white-space: nowrap;
+}
+
+.vmp-progress-step.active .vmp-step-label,
+.vmp-progress-step.completed .vmp-step-label {
+  color: var(--vmp-text);
+}
+
+.vmp-step-desc {
+  font-size: 11px;
+  color: var(--vmp-text-light);
+  white-space: nowrap;
+}
+
+.vmp-progress-line {
+  display: none; /* مخفي لأن الخط الأساسي في ::before */
+}
+
+/* ── Step Content ─────────────────────────────────────────────────── */
+.vmp-step-content {
+  display: none;
+  animation: vmpFadeIn 0.3s ease;
+}
+
+.vmp-step-content.active {
+  display: block;
+}
+
+@keyframes vmpFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.vmp-step-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--vmp-text);
+  margin: 0 0 4px;
+}
+
+.vmp-step-desc {
+  font-size: 14px;
+  color: var(--vmp-text-muted);
+  margin: 0 0 28px;
+}
+
+/* ── Form Grid ────────────────────────────────────────────────────── */
+.vmp-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 8px;
+}
+
+.vmp-form-group {
+  margin-bottom: 20px;
+}
+
+.vmp-form-group label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--vmp-text);
+  margin-bottom: 8px;
+}
+
+.vmp-form-group label .required {
+  color: var(--vmp-danger);
+  margin-right: 2px;
+}
+
+/* ── Inputs ───────────────────────────────────────────────────────── */
+.vmp-input,
+.vmp-textarea,
+.vmp-select {
+  width: 100%;
+  padding: 11px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--vmp-text);
+  background: var(--vmp-surface);
+  border: 1.5px solid var(--vmp-border);
+  border-radius: var(--vmp-radius);
+  transition: all var(--vmp-transition);
+  line-height: 1.5;
+}
+
+.vmp-input:focus,
+.vmp-textarea:focus,
+.vmp-select:focus {
+  outline: none;
+  border-color: var(--vmp-primary);
+  box-shadow: 0 0 0 3px var(--vmp-primary-light);
+}
+
+.vmp-input::placeholder,
+.vmp-textarea::placeholder {
+  color: var(--vmp-text-light);
+}
+
+.vmp-input[disabled],
+.vmp-select[disabled] {
+  background: var(--vmp-bg);
+  color: var(--vmp-text-muted);
+  cursor: not-allowed;
+}
+
+.vmp-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.vmp-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left 12px center;
+  padding-left: 40px;
+  padding-right: 14px;
+}
+
+[dir="ltr"] .vmp-select {
+  background-position: right 12px center;
+  padding-left: 14px;
+  padding-right: 40px;
+}
+
+/* ── Password Wrapper ─────────────────────────────────────────────── */
+.vmp-password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.vmp-password-wrapper .vmp-input {
+  flex: 1;
+  padding-left: 48px;
+}
+
+[dir="ltr"] .vmp-password-wrapper .vmp-input {
+  padding-left: 14px;
+  padding-right: 48px;
+}
+
+.vmp-toggle-password {
+  position: absolute;
+  left: 12px;
+  background: none;
+  border: none;
+  color: var(--vmp-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--vmp-radius-sm);
+  transition: all var(--vmp-transition);
+}
+
+[dir="ltr"] .vmp-toggle-password {
+  left: auto;
+  right: 12px;
+}
+
+.vmp-toggle-password:hover {
+  color: var(--vmp-primary);
+  background: var(--vmp-primary-light);
+}
+
+.vmp-toggle-password .dashicons {
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Password Strength ────────────────────────────────────────────── */
+.vmp-password-strength {
+  display: none;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.vmp-password-strength.weak {
+  color: var(--vmp-danger);
+}
+
+.vmp-password-strength.medium {
+  color: var(--vmp-warning);
+}
+
+.vmp-password-strength.strong {
+  color: var(--vmp-success);
+}
+
+/* ── Slug Wrapper ─────────────────────────────────────────────────── */
+.vmp-slug-wrapper {
+  width: 100%;
+}
+
+.vmp-slug-prefix {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.vmp-slug-status {
+  font-weight: 500;
+}
+
+.vmp-slug-status.available {
+  color: var(--vmp-success);
+}
+
+.vmp-slug-status.taken {
+  color: var(--vmp-danger);
+}
+
+/* ── Checkbox Label ───────────────────────────────────────────────── */
+.vmp-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.vmp-checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--vmp-primary);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.vmp-checkbox-text {
+  color: var(--vmp-text);
+}
+
+.vmp-checkbox-text .required {
+  color: var(--vmp-danger);
+}
+
+.vmp-checkbox-text a {
+  color: var(--vmp-primary);
+  text-decoration: underline;
+}
+
+.vmp-checkbox-text a:hover {
+  color: var(--vmp-primary-dark);
+}
+
+/* ── Field Error ──────────────────────────────────────────────────── */
+.vmp-field-error {
+  display: block;
+  color: var(--vmp-danger);
+  font-size: 12px;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.vmp-input-error {
+  border-color: var(--vmp-danger) !important;
+}
+
+.vmp-input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+/* ── Input Hint ───────────────────────────────────────────────────── */
+.vmp-input-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--vmp-text-muted);
+  margin-top: 4px;
+}
+
+/* ── Char Count ───────────────────────────────────────────────────── */
+.vmp-char-count {
+  direction: ltr;
+  text-align: left;
+}
+
+/* ── Form Actions ─────────────────────────────────────────────────── */
+.vmp-form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid var(--vmp-border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.vmp-form-actions:only-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────── */
+.vmp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--vmp-radius);
+  border: none;
+  cursor: pointer;
+  transition: all var(--vmp-transition);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.vmp-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.vmp-btn-primary {
+  background: var(--vmp-primary);
+  color: #fff;
+}
+
+.vmp-btn-primary:hover:not(:disabled) {
+  background: var(--vmp-primary-dark);
+  box-shadow: var(--vmp-shadow);
+  transform: translateY(-1px);
+}
+
+.vmp-btn-outline {
+  background: transparent;
+  color: var(--vmp-primary);
+  border: 1.5px solid var(--vmp-primary);
+}
+
+.vmp-btn-outline:hover:not(:disabled) {
+  background: var(--vmp-primary-light);
+}
+
+.vmp-btn-plan-select {
+  width: 100%;
+  padding: 12px;
+  font-weight: 600;
+}
+
+.vmp-btn-plan-select.selected {
+  background: var(--vmp-primary);
+  color: #fff;
+}
+
+.vmp-btn-loading {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.vmp-btn-loading .spin {
+  animation: vmpSpin 1s linear infinite;
+}
+
+@keyframes vmpSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Plans Grid ───────────────────────────────────────────────────── */
+.vmp-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 8px 0 24px;
+}
+
+.vmp-plan-card {
+  position: relative;
+  border: 2px solid var(--vmp-border);
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all var(--vmp-transition);
+  background: var(--vmp-surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.vmp-plan-card:hover {
+  border-color: var(--vmp-primary);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.1);
+}
+
+.vmp-plan-card.selected {
+  border-color: var(--vmp-primary);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.vmp-plan-card.popular {
+  border-color: var(--vmp-primary);
+}
+
+.vmp-plan-badge {
+  position: absolute;
+  top: -10px;
+  right: 20px;
+  background: var(--vmp-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+[dir="ltr"] .vmp-plan-badge {
+  right: auto;
+  left: 20px;
+}
+
+.vmp-plan-header {
+  margin-bottom: 12px;
+}
+
+.vmp-plan-name {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--vmp-text);
+}
+
+.vmp-plan-price-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.vmp-plan-price-free {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--vmp-success);
+}
+
+.vmp-plan-price {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--vmp-text);
+  line-height: 1;
+}
+
+.vmp-plan-period {
+  font-size: 14px;
+  color: var(--vmp-text-muted);
+}
+
+.vmp-plan-desc {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--vmp-text-muted);
+  line-height: 1.5;
+}
+
+.vmp-plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  flex: 1;
+}
+
+.vmp-plan-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--vmp-text);
+  border-bottom: 1px solid var(--vmp-border);
+}
+
+.vmp-plan-features li:last-child {
+  border-bottom: none;
+}
+
+.vmp-plan-features .dashicons-yes-alt {
+  color: var(--vmp-success);
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.vmp-plan-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vmp-plan-check {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--vmp-border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--vmp-transition);
+}
+
+[dir="ltr"] .vmp-plan-check {
+  left: auto;
+  right: 16px;
+}
+
+.vmp-plan-card.selected .vmp-plan-check {
+  background: var(--vmp-primary);
+  border-color: var(--vmp-primary);
+  color: #fff;
+}
+
+.vmp-plan-check .dashicons-yes {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.vmp-no-features {
+  color: var(--vmp-text-muted);
+  font-style: italic;
+  padding: 8px 0 !important;
+  border: none !important;
+}
+
+/* ── Success Message ──────────────────────────────────────────────── */
+.vmp-success-message,
+.vmp-error-message {
+  animation: vmpFadeIn 0.4s ease;
+}
+
+.vmp-success-icon,
+.vmp-error-icon {
+  margin: 0 auto 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vmp-success-message h2,
+.vmp-error-message h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.vmp-success-message p,
+.vmp-error-message p {
+  font-size: 16px;
+  color: var(--vmp-text-muted);
+  margin: 0 0 8px;
+}
+
+/* ── Notices ──────────────────────────────────────────────────────── */
+.vmp-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--vmp-radius);
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.vmp-notice-info {
+  background: var(--vmp-primary-light);
+  border: 1px solid var(--vmp-secondary);
+  color: var(--vmp-primary-dark);
+}
+
+.vmp-notice-success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.vmp-notice-warning {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.vmp-notice-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.vmp-notice .dashicons {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .vmp-register-wrap .vmp-card {
+    padding: 24px 20px;
+  }
+
+  .vmp-progress-step {
+    max-width: 100px;
+  }
+
+  .vmp-step-label,
+  .vmp-step-desc {
+    font-size: 11px;
+  }
+
+  .vmp-step-circle {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .vmp-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vmp-plans-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vmp-form-actions {
+    flex-direction: column-reverse;
+    width: 100%;
+  }
+
+  .vmp-form-actions .vmp-btn {
+    width: 100%;
+  }
+
+  .vmp-header-bar {
+    padding: 24px 20px;
+  }
+
+  .vmp-header-bar h1 {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vmp-register-wrap {
+    padding: 20px 0;
+  }
+
+  .vmp-register-wrap .vmp-container {
+    padding: 0 12px;
+  }
+}
+
+/* ── RTL Specific ─────────────────────────────────────────────────── */
+[dir="rtl"] .vmp-form-group label .required {
+  margin-right: 0;
+  margin-left: 2px;
+}
+
+[dir="rtl"] .vmp-input-hint {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .vmp-char-count {
+  direction: rtl;
+  text-align: right;
+}
