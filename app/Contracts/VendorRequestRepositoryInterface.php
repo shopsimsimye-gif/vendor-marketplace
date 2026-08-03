@@ -65,7 +65,7 @@ interface VendorRequestRepositoryInterface
      * @param int $admin_id معرف المشرف الذي وافق
      * @return int|false معرف البائع الجديد أو false في حالة الفشل
      */
-    public function approve(int $id, int $admin_id): int|false;
+    public function approve(int $id, int $admin_id): int|false|\WP_Error;
 
     /**
      * رفض طلب مع سبب
