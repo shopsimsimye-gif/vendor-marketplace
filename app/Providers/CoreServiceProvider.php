@@ -45,7 +45,7 @@ use VMP\Controllers\WithdrawalController;
 use VMP\Controllers\WhatsappController;
 use VMP\Controllers\VendorRegistrationController;
 use VMP\Controllers\AiSettingsController;
-use VMP\Modules\AI\Controllers\AIProductController;
+use VMP\Controllers\AIProductController;
 use VMP\Controllers\TemplateController;
 use VMP\Controllers\ReportController;
 use VMP\Controllers\SettingsController;

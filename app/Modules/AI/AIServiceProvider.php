@@ -22,7 +22,7 @@ use VMP\Modules\AI\Cost\CostTracker;
 use VMP\Modules\AI\ProviderFailover;
 use VMP\Modules\AI\ProviderHealth;
 use VMP\Modules\AI\Pipelines\ProductGenerationPipeline;
-use VMP\Modules\AI\Controllers\AIProductController;
+use VMP\Controllers\AIProductController;
 use VMP\Modules\AI\ProviderResolver;
 use VMP\Modules\AI\Providers\UnconfiguredImageGenerationProvider;
 use VMP\Modules\AI\Providers\UnconfiguredLLMProvider;

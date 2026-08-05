@@ -1,5 +1,5 @@
 <?php
-namespace VMP\Modules\AI\Controllers;
+namespace VMP\Controllers;
 
 defined('ABSPATH') || exit;
 
