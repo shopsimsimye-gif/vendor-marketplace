@@ -430,7 +430,7 @@ class CoreServiceProvider extends ServiceProvider
         // $registry->ajax('vmp_vendor_registration_step1',    VendorRegistrationController::class, 'step1VerifyUser',  true, 'vmp_vendor_registration_nonce');
         // $registry->ajax('vmp_vendor_registration_step2',    VendorRegistrationController::class, 'step2StoreData',   true, 'vmp_vendor_registration_nonce');
         // $registry->ajax('vmp_vendor_registration_submit',   VendorRegistrationController::class, 'submitRequest',    true, 'vmp_vendor_registration_nonce');
-        // $registry->ajax('vmp_check_store_slug',             VendorRegistrationController::class, 'checkSlugAvailability',        true);
+        $registry->ajax('vmp_check_store_slug',             VendorController::class, 'checkStoreSlug',                 false, 'vmp_public_nonce');
         // $registry->ajax('vmp_check_email',                  VendorRegistrationController::class, 'checkEmailAvailability',       true);
 
         // Product Routes
@@ -443,11 +443,13 @@ class CoreServiceProvider extends ServiceProvider
         // Order Routes
         $registry->ajax('vmp_get_vendor_orders',      OrderController::class, 'adminGetVendorOrders', false, 'vmp_admin_nonce');
         $registry->ajax('vmp_get_order_details',      OrderController::class, 'getOrderDetails',      false, 'vmp_public_nonce');
+        $registry->ajax('vmp_admin_get_order_details', OrderController::class, 'getOrderDetails',      false, 'vmp_admin_nonce');
         $registry->ajax('vmp_vendor_orders',          OrderController::class, 'getVendorOrders',      false, 'vmp_public_nonce');
 
         // Commission Routes
         $registry->ajax('vmp_get_commissions',        CommissionController::class, 'adminGetCommissions', false, 'vmp_admin_nonce');
         $registry->ajax('vmp_pay_commission',         CommissionController::class, 'payCommission',       false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_pay_commission',    CommissionController::class, 'payCommission',       false, 'vmp_admin_nonce');
         $registry->ajax('vmp_bulk_pay_commissions',   CommissionController::class, 'bulkPayCommissions',  false, 'vmp_admin_nonce');
         $registry->ajax('vmp_get_commission_stats',   CommissionController::class, 'adminGetStats',       false, 'vmp_admin_nonce');
         $registry->ajax('vmp_vendor_get_commissions', CommissionController::class, 'vendorGetCommissions',false, 'vmp_public_nonce');
@@ -470,15 +472,20 @@ class CoreServiceProvider extends ServiceProvider
 
         // Withdrawal Routes
         $registry->ajax('vmp_request_withdrawal',       WithdrawalController::class, 'requestWithdrawal',    false, 'vmp_public_nonce');
+        $registry->ajax('vmp_vendor_request_withdrawal', WithdrawalController::class, 'requestWithdrawal',    false, 'vmp_public_nonce');
         $registry->ajax('vmp_admin_get_withdrawals',    WithdrawalController::class, 'adminGetWithdrawals',  false, 'vmp_admin_nonce');
-        $registry->ajax('vmp_admin_process_withdrawal', WithdrawalController::class, 'adminProcessWithdrawal',false,'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_process_withdrawal',   WithdrawalController::class, 'adminProcessWithdrawal', false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_approve_withdrawal',  WithdrawalController::class, 'adminProcessWithdrawal', false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_reject_withdrawal',   WithdrawalController::class, 'adminProcessWithdrawal', false, 'vmp_admin_nonce');
 
         // WhatsApp Routes
         $registry->ajax('vmp_track_whatsapp_click',          WhatsappController::class, 'trackClick',           true);  // عام — لا يحتاج nonce
         $registry->ajax('vmp_save_whatsapp_settings',        WhatsappController::class, 'saveSettings',         false, 'vmp_public_nonce');
         $registry->ajax('vmp_get_whatsapp_stats',            WhatsappController::class, 'getStats',             false, 'vmp_public_nonce');
         $registry->ajax('vmp_admin_whatsapp_settings',       WhatsappController::class, 'adminSettings',        false, 'vmp_admin_nonce');
-        $registry->ajax('vmp_admin_get_whatsapp_stats',      WhatsappController::class, 'adminGetStats',        false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_get_whatsapp_stats',      WhatsappController::class, 'adminGetStats',       false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_get_whatsapp_chart',   WhatsappController::class, 'adminGetChart',       false, 'vmp_admin_nonce');
+        $registry->ajax('vmp_admin_get_vendor_whatsapp_stats', WhatsappController::class, 'adminGetVendorStats', false, 'vmp_admin_nonce');
     }
 
     /**

@@ -266,4 +266,35 @@ class VendorController extends BaseController
 
         return is_numeric($value) ? $value : null;
     }
+    /**
+     * التحقق من توفر slug المتجر (AJAX) — يستخدمه vendor-profile.js
+     * الواجهة ترسل: action=vmp_check_store_slug & nonce=vmp_public_nonce & slug & exclude_user_id
+     */
+    public function checkStoreSlug(): ApiResponse
+    {
+        $slug = sanitize_title($_POST['slug'] ?? '');
+        $excludeUserId = absint($_POST['exclude_user_id'] ?? 0);
+
+        if ($slug === '') {
+            return new SuccessResponse(
+                data: ['available' => true, 'slug' => $slug, 'message' => ''],
+                message: ''
+            );
+        }
+
+        $exists = $this->vendorService->slugExistsForCheck($slug, $excludeUserId);
+
+        return new SuccessResponse(
+            data: [
+                'available' => !$exists,
+                'slug'      => $slug,
+                'message'   => $exists
+                    ? __('الرابط مستخدم مسبقاً', 'vmp')
+                    : __('الرابط متاح', 'vmp'),
+            ],
+            message: $exists ? __('الرابط مستخدم مسبقاً', 'vmp') : __('الرابط متاح', 'vmp')
+        );
+    }
+
 }
+

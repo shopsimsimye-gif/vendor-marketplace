@@ -291,6 +291,20 @@ class VendorService
     }
 
     /**
+     * التحقق من توفر slug (مع استبعاد بائع المستخدم الحالي عند التعديل)
+     */
+    public function slugExistsForCheck(string $slug, int $excludeUserId = 0): bool
+    {
+        if ($excludeUserId > 0) {
+            $existing = $this->vendorRepository->findByUserId($excludeUserId);
+            if ($existing && ($existing->slug ?? '') === $slug) {
+                return false; // نفس slug البائع الحالي — متاح
+            }
+        }
+        return $this->vendorRepository->slugExists($slug);
+    }
+
+    /**
      * تحديث إحصائيات البائع
      * 
      * @param int $vendorId معرف البائع
