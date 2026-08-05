@@ -236,121 +236,14 @@ class Whatsapp extends AbstractModule
     /**
      * ✅ تتبع نقرات واتساب عبر AJAX
      */
-    public function ajax_track_click(): void
-    {
-        if (!check_ajax_referer('vmp_public_nonce', 'nonce', false)) {
-            wp_send_json_error(['message' => 'Invalid nonce']);
-        }
-
-        global $wpdb;
-
-        $vendor_id = (int) ($_POST['vendor_id'] ?? 0);
-        $product_id = (int) ($_POST['product_id'] ?? 0);
-        $click_type = sanitize_text_field($_POST['click_type'] ?? 'button');
-        $page_url = esc_url_raw($_POST['page_url'] ?? '');
-        $page_url = strtok($page_url, '?');
-
-        $user_agent = sanitize_text_field(substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255));
-        $referrer = esc_url_raw(substr($_SERVER['HTTP_REFERER'] ?? '', 0, 500));
-
-        $wpdb->insert($this->clicks_table, [
-            'vendor_id' => $vendor_id,
-            'product_id' => $product_id ?: null,
-            'page_url' => $page_url,
-            'click_type' => $click_type,
-            'user_agent' => $user_agent,
-            'referrer' => $referrer,
-            'clicked_at' => current_time('mysql'),
-        ]);
-
-        wp_send_json_success();
-    }
 
     /**
      * حفظ إعدادات واتساب للبائع
      */
-    public function ajax_save_settings(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
-        }
-
-        $subscription_module = $this->container->get('module_manager')->get_module('subscription');
-        if ($subscription_module && !$subscription_module->has_feature((int) $vendor->id, 'whatsapp_button')) {
-            wp_send_json_error(['message' => __('هذه الميزة غير متاحة في خطتك الحالية', 'vmp')]);
-        }
-
-        $whatsapp_number = sanitize_text_field($_POST['whatsapp_number'] ?? '');
-        $whatsapp_message = sanitize_textarea_field($_POST['whatsapp_message'] ?? '');
-
-        if (!empty($whatsapp_number) && !preg_match('/^\+?[0-9]{7,15}$/', preg_replace('/\s/', '', $whatsapp_number))) {
-            wp_send_json_error(['message' => __('رقم الواتساب غير صالح', 'vmp')]);
-        }
-
-        if ($this->vendorRepository->update((int) $vendor->id, [
-            'whatsapp_number' => $whatsapp_number,
-            'whatsapp_message' => $whatsapp_message,
-        ])) {
-            wp_send_json_success(['message' => __('تم حفظ إعدادات واتساب', 'vmp')]);
-        }
-
-        wp_send_json_error(['message' => __('لم يتم تغيير أي بيانات', 'vmp')]);
-    }
 
     /**
      * جلب إحصائيات واتساب للبائع (خاصته)
      */
-    public function ajax_get_stats(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
-        }
-
-        global $wpdb;
-        $vendor_id = (int) $vendor->id;
-
-        $total_clicks = (int) $wpdb->get_var(
-            $wpdb->prepare("SELECT COUNT(*) FROM {$this->clicks_table} WHERE vendor_id = %d", $vendor_id)
-        );
-        $today_clicks = (int) $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$this->clicks_table} WHERE vendor_id = %d AND DATE(clicked_at) = CURDATE()",
-                $vendor_id
-            )
-        );
-        $monthly_data = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT DATE_FORMAT(clicked_at, '%%Y-%%m-%%d') as day, COUNT(*) as clicks
-                 FROM {$this->clicks_table}
-                 WHERE vendor_id = %d AND clicked_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                 GROUP BY DATE_FORMAT(clicked_at, '%%Y-%%m-%%d')
-                 ORDER BY day ASC",
-                $vendor_id
-            )
-        );
-
-        wp_send_json_success([
-            'total_clicks' => $total_clicks,
-            'today_clicks' => $today_clicks,
-            'monthly_data' => $monthly_data,
-        ]);
-    }
 
     /* ═══════════════════════════════════════════════════════════ */
     /* أكشنات المشرف (إعدادات عامة + إحصائيات متقدمة)            */
@@ -359,179 +252,18 @@ class Whatsapp extends AbstractModule
     /**
      * إعدادات واتساب في لوحة المشرف (عامة)
      */
-    public function ajax_admin_settings(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-
-        if (!current_user_can('vmp_manage_settings')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $settings = [
-            'show_on_product' => !empty($_POST['show_on_product']),
-            'show_on_store' => !empty($_POST['show_on_store']),
-            'show_on_catalog' => !empty($_POST['show_on_catalog']),
-            'button_text' => sanitize_text_field($_POST['button_text'] ?? __('تواصل عبر واتساب', 'vmp')),
-            'button_color' => sanitize_hex_color($_POST['button_color'] ?? '#25D366'),
-        ];
-
-        foreach ($settings as $key => $value) {
-            update_option("vmp_whatsapp_{$key}", $value);
-        }
-
-        wp_send_json_success(['message' => __('تم حفظ إعدادات واتساب', 'vmp')]);
-    }
 
     /**
      * ✅ إحصائيات واتساب لجميع البائعين (للمشرف)
      */
-    public function ajax_admin_get_stats(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-
-        if (!current_user_can('vmp_manage_reports')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        global $wpdb;
-
-        $vendor_stats = $wpdb->get_results("
-            SELECT 
-                v.id,
-                v.store_name,
-                v.store_slug,
-                v.user_id,
-                COALESCE(COUNT(c.id), 0) AS total_clicks,
-                COALESCE(SUM(CASE WHEN DATE(c.clicked_at) = CURDATE() THEN 1 ELSE 0 END), 0) AS today_clicks,
-                COALESCE(SUM(CASE WHEN c.clicked_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END), 0) AS week_clicks,
-                COALESCE(SUM(CASE WHEN c.clicked_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END), 0) AS month_clicks,
-                COALESCE(SUM(CASE WHEN c.click_type = 'product' THEN 1 ELSE 0 END), 0) AS product_clicks,
-                COALESCE(SUM(CASE WHEN c.click_type = 'store' THEN 1 ELSE 0 END), 0) AS store_clicks
-            FROM {$wpdb->prefix}vmp_vendors v
-            LEFT JOIN {$this->clicks_table} c ON v.id = c.vendor_id
-            GROUP BY v.id
-            ORDER BY total_clicks DESC
-        ");
-
-        wp_send_json_success([
-            'vendors' => $vendor_stats,
-        ]);
-    }
 
     /**
      * ✅ إحصائيات واتساب لبائع معين (للمشرف)
      */
-    public function ajax_admin_get_vendor_stats(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-
-        if (!current_user_can('vmp_manage_reports')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $vendor_id = (int) ($_POST['vendor_id'] ?? 0);
-        if ($vendor_id <= 0) {
-            wp_send_json_error(['message' => __('معرف البائع غير صالح', 'vmp')]);
-        }
-
-        global $wpdb;
-
-        // ── إحصائيات تفصيلية للبائع ──
-        $stats = $wpdb->get_row(
-            $wpdb->prepare("
-                SELECT 
-                    COALESCE(COUNT(*), 0) AS total_clicks,
-                    COALESCE(SUM(CASE WHEN DATE(clicked_at) = CURDATE() THEN 1 ELSE 0 END), 0) AS today_clicks,
-                    COALESCE(SUM(CASE WHEN clicked_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END), 0) AS week_clicks,
-                    COALESCE(SUM(CASE WHEN clicked_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END), 0) AS month_clicks,
-                    COALESCE(SUM(CASE WHEN click_type = 'product' THEN 1 ELSE 0 END), 0) AS product_clicks,
-                    COALESCE(SUM(CASE WHEN click_type = 'store' THEN 1 ELSE 0 END), 0) AS store_clicks
-                FROM {$this->clicks_table}
-                WHERE vendor_id = %d
-            ", $vendor_id)
-        );
-
-        // ── المنتجات الأكثر استفساراً ──
-        $top_products = $wpdb->get_results(
-            $wpdb->prepare("
-                SELECT 
-                    product_id,
-                    COUNT(*) AS clicks,
-                    (SELECT post_title FROM {$wpdb->posts} WHERE ID = product_id) AS product_name
-                FROM {$this->clicks_table}
-                WHERE vendor_id = %d AND product_id > 0
-                GROUP BY product_id
-                ORDER BY clicks DESC
-                LIMIT 10
-            ", $vendor_id)
-        );
-
-        // ── النقرات اليومية (آخر 30 يوم) ──
-        $daily = $wpdb->get_results(
-            $wpdb->prepare("
-                SELECT 
-                    DATE(clicked_at) AS date,
-                    COUNT(*) AS clicks
-                FROM {$this->clicks_table}
-                WHERE vendor_id = %d AND clicked_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                GROUP BY DATE(clicked_at)
-                ORDER BY date ASC
-            ", $vendor_id)
-        );
-
-        wp_send_json_success([
-            'stats' => $stats,
-            'top_products' => $top_products,
-            'daily' => $daily,
-        ]);
-    }
 
     /**
      * ✅ بيانات الرسم البياني لواتساب (للمشرف)
      */
-    public function ajax_admin_get_chart(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-
-        if (!current_user_can('vmp_manage_reports')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        global $wpdb;
-
-        $vendor_id = (int) ($_POST['vendor_id'] ?? 0);
-        $months = (int) ($_POST['months'] ?? 6);
-
-        if ($vendor_id > 0) {
-            // بيانات بائع معين
-            $data = $wpdb->get_results(
-                $wpdb->prepare("
-                    SELECT 
-                        DATE_FORMAT(clicked_at, '%%Y-%%m-%%d') AS date,
-                        COUNT(*) AS clicks
-                    FROM {$this->clicks_table}
-                    WHERE vendor_id = %d AND clicked_at >= DATE_SUB(NOW(), INTERVAL %d MONTH)
-                    GROUP BY DATE(clicked_at)
-                    ORDER BY date ASC
-                ", $vendor_id, $months)
-            );
-        } else {
-            // بيانات جميع البائعين
-            $data = $wpdb->get_results(
-                $wpdb->prepare("
-                    SELECT 
-                        DATE_FORMAT(clicked_at, '%%Y-%%m-%%d') AS date,
-                        COUNT(*) AS clicks
-                    FROM {$this->clicks_table}
-                    WHERE clicked_at >= DATE_SUB(NOW(), INTERVAL %d MONTH)
-                    GROUP BY DATE(clicked_at)
-                    ORDER BY date ASC
-                ", $months)
-            );
-        }
-
-        wp_send_json_success(['data' => $data]);
-    }
 }
 
 // ✅ تعريف الـ alias للتوافق مع الإصدارات القديمة

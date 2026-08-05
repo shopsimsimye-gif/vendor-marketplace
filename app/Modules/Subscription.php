@@ -235,210 +235,24 @@ class Subscription extends AbstractModule
      *
      * @return void Output payload.
      */
-    public function ajax_subscribe(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول أولاً', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor || $vendor->status !== 'approved') {
-            wp_send_json_error(['message' => __('يجب أن تكون بائعاً معتمداً', 'vmp')]);
-        }
-
-        $plan_id = (int) ($_POST['plan_id'] ?? 0);
-        $plan = $this->planRepository->find($plan_id);
-        if (!$plan || !$plan->is_active) {
-            wp_send_json_error(['message' => __('الخطة غير موجودة أو غير متاحة', 'vmp')]);
-        }
-
-        $current = $this->repository->findActiveByVendor((int) $vendor->id);
-        if ($current) {
-            $this->repository->cancel((int) $current->id);
-        }
-
-        $start_date = current_time('mysql');
-        $end_date = date('Y-m-d H:i:s', strtotime("+{$plan->billing_interval} {$plan->billing_period}"));
-
-        $subscription_id = $this->repository->create([
-            'vendor_id' => (int) $vendor->id,
-            'plan_id' => $plan_id,
-            'status' => 'active',
-            'amount' => (float) $plan->price,
-            'billing_period' => $plan->billing_period,
-            'billing_interval' => (int) $plan->billing_interval,
-            'start_date' => $start_date,
-            'end_date' => $end_date,
-        ]);
-
-        if (!$subscription_id) {
-            wp_send_json_error(['message' => __('حدث خطأ أثناء الاشتراك', 'vmp')]);
-        }
-
-        $this->vendorRepository->update((int) $vendor->id, [
-            'subscription_plan' => $plan->slug,
-            'subscription_status' => 'active',
-            'subscription_start' => $start_date,
-            'subscription_expiry' => $end_date,
-        ]);
-
-        $this->container->get('event_manager')->trigger(
-            'vmp_subscription_created',
-            $subscription_id,
-            (int) $vendor->id,
-            $plan_id
-        );
-
-        wp_send_json_success([
-            'message' => __('تم الاشتراك بنجاح', 'vmp'),
-            'subscription_id' => $subscription_id,
-            'end_date' => $end_date,
-            'plan_name' => $plan->name,
-        ]);
-    }
 
     /**
      * Ajax Upgrade functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_upgrade(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول أولاً', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor || $vendor->status !== 'approved') {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $new_plan_id = (int) ($_POST['plan_id'] ?? 0);
-        $new_plan = $this->planRepository->find($new_plan_id);
-        if (!$new_plan || !$new_plan->is_active) {
-            wp_send_json_error(['message' => __('الخطة غير موجودة', 'vmp')]);
-        }
-
-        $current = $this->repository->findActiveByVendor((int) $vendor->id);
-        if ($current && (int) $current->plan_id === $new_plan_id) {
-            wp_send_json_error(['message' => __('أنت مشترك بهذه الخطة بالفعل', 'vmp')]);
-        }
-
-        if ($current) {
-            $this->repository->cancel((int) $current->id);
-        }
-
-        $start_date = current_time('mysql');
-        $end_date = date('Y-m-d H:i:s', strtotime("+{$new_plan->billing_interval} {$new_plan->billing_period}"));
-
-        $subscription_id = $this->repository->create([
-            'vendor_id' => (int) $vendor->id,
-            'plan_id' => $new_plan_id,
-            'status' => 'active',
-            'amount' => (float) $new_plan->price,
-            'billing_period' => $new_plan->billing_period,
-            'billing_interval' => (int) $new_plan->billing_interval,
-            'start_date' => $start_date,
-            'end_date' => $end_date,
-        ]);
-
-        if (!$subscription_id) {
-            wp_send_json_error(['message' => __('حدث خطأ', 'vmp')]);
-        }
-
-        $this->vendorRepository->update((int) $vendor->id, [
-            'subscription_plan' => $new_plan->slug,
-            'subscription_status' => 'active',
-            'subscription_start' => $start_date,
-            'subscription_expiry' => $end_date,
-        ]);
-
-        $this->container->get('event_manager')->trigger(
-            'vmp_subscription_upgraded',
-            $subscription_id,
-            (int) $vendor->id,
-            $new_plan_id
-        );
-
-        wp_send_json_success([
-            'message' => __('تم تغيير الخطة بنجاح', 'vmp'),
-            'subscription_id' => $subscription_id,
-            'plan_name' => $new_plan->name,
-            'end_date' => $end_date,
-        ]);
-    }
 
     /**
      * Ajax Cancel functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_cancel(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول أولاً', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
-        }
-
-        $current = $this->repository->findActiveByVendor((int) $vendor->id);
-        if (!$current) {
-            wp_send_json_error(['message' => __('لا يوجد اشتراك نشط', 'vmp')]);
-        }
-
-        $this->repository->cancel((int) $current->id);
-        $this->vendorRepository->update((int) $vendor->id, [
-            'subscription_plan' => 'free',
-            'subscription_status' => 'active',
-            'subscription_expiry' => null,
-        ]);
-
-        $this->container->get('event_manager')->trigger(
-            'vmp_subscription_cancelled',
-            (int) $current->id,
-            (int) $vendor->id
-        );
-
-        wp_send_json_success(['message' => __('تم إلغاء الاشتراك', 'vmp')]);
-    }
 
     /**
      * Ajax Get Plans functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_get_plans(): void
-    {
-        $plans = $this->planRepository->getAll(true);
-        $data = [];
-        foreach ($plans as $plan) {
-            $data[] = [
-                'id' => (int) $plan->id,
-                'name' => $plan->name,
-                'slug' => $plan->slug,
-                'description' => $plan->description,
-                'price' => (float) $plan->price,
-                'billing_period' => $plan->billing_period,
-                'billing_interval' => (int) $plan->billing_interval,
-                'max_products' => (int) $plan->max_products,
-                'commission_rate' => (float) $plan->commission_rate,
-                'features' => json_decode($plan->features ?? '{}', true),
-            ];
-        }
-        wp_send_json_success(['plans' => $data]);
-    }
 
     /* ──────────────────────────────────────────────────────────── */
     /* أكشنات المشرف (إنشاء، تحديث، حذف الخطط)                    */
@@ -449,151 +263,24 @@ class Subscription extends AbstractModule
      *
      * @return void Output payload.
      */
-    public function ajax_admin_create_plan(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_subscriptions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $features = [];
-
-        if (isset($_POST['features']) && is_array($_POST['features'])) {
-            $features = array_map('boolval', $_POST['features']);
-        } else {
-            $features = [
-                'unlimited_products' => !empty($_POST['unlimited_products']),
-                'whatsapp_button' => !empty($_POST['whatsapp_button']),
-                'custom_domain' => !empty($_POST['custom_domain']),
-                'advanced_analytics' => !empty($_POST['advanced_analytics']),
-                'coupons' => !empty($_POST['coupons']),
-                'trusted_badge' => !empty($_POST['trusted_badge']),
-                'priority_support' => !empty($_POST['priority_support']),
-                'store_address' => !empty($_POST['store_address']),
-                'social_links' => !empty($_POST['social_links']),
-                'product_video' => !empty($_POST['product_video']),
-            ];
-        }
-
-        $plan_id = $this->planRepository->create([
-            'name' => sanitize_text_field($_POST['name'] ?? ''),
-            'description' => sanitize_textarea_field($_POST['description'] ?? ''),
-            'price' => (float) ($_POST['price'] ?? 0),
-            'billing_period' => sanitize_text_field($_POST['billing_period'] ?? 'month'),
-            'billing_interval' => (int) ($_POST['billing_interval'] ?? 1),
-            'max_products' => (int) ($_POST['max_products'] ?? 10),
-            'commission_rate' => (float) ($_POST['commission_rate'] ?? 10),
-            'features' => $features,
-            'sort_order' => (int) ($_POST['sort_order'] ?? 0),
-        ]);
-
-        if ($plan_id) {
-            wp_send_json_success(['message' => __('تم إنشاء الخطة بنجاح', 'vmp'), 'plan_id' => $plan_id]);
-        }
-
-        wp_send_json_error(['message' => __('حدث خطأ أثناء إنشاء الخطة', 'vmp')]);
-    }
 
     /**
      * Ajax Admin Update Plan functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_admin_update_plan(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_subscriptions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $plan_id = (int) ($_POST['plan_id'] ?? 0);
-        $plan = $this->planRepository->find($plan_id);
-        if (!$plan) {
-            wp_send_json_error(['message' => __('الخطة غير موجودة', 'vmp')]);
-        }
-
-        $existing_features = json_decode($plan->features ?? '{}', true) ?: [];
-
-        if (isset($_POST['features']) && is_array($_POST['features'])) {
-            $new_features = array_map('boolval', $_POST['features']);
-            $features = array_merge($existing_features, $new_features);
-        } else {
-            $new_features = [
-                'unlimited_products' => !empty($_POST['unlimited_products']),
-                'whatsapp_button' => !empty($_POST['whatsapp_button']),
-                'custom_domain' => !empty($_POST['custom_domain']),
-                'advanced_analytics' => !empty($_POST['advanced_analytics']),
-                'coupons' => !empty($_POST['coupons']),
-                'trusted_badge' => !empty($_POST['trusted_badge']),
-                'priority_support' => !empty($_POST['priority_support']),
-                'store_address' => !empty($_POST['store_address']),
-                'social_links' => !empty($_POST['social_links']),
-                'product_video' => !empty($_POST['product_video']),
-            ];
-            $features = array_merge($existing_features, $new_features);
-        }
-
-        $update = [
-            'name' => sanitize_text_field($_POST['name'] ?? $plan->name),
-            'description' => sanitize_textarea_field($_POST['description'] ?? $plan->description),
-            'price' => (float) ($_POST['price'] ?? $plan->price),
-            'billing_period' => sanitize_text_field($_POST['billing_period'] ?? $plan->billing_period),
-            'billing_interval' => (int) ($_POST['billing_interval'] ?? $plan->billing_interval),
-            'max_products' => (int) ($_POST['max_products'] ?? $plan->max_products),
-            'commission_rate' => (float) ($_POST['commission_rate'] ?? $plan->commission_rate),
-            'features' => $features,
-            'sort_order' => (int) ($_POST['sort_order'] ?? $plan->sort_order),
-            'is_active' => (int) ($_POST['is_active'] ?? $plan->is_active),
-        ];
-
-        if ($this->planRepository->update($plan_id, $update)) {
-            wp_send_json_success(['message' => __('تم تحديث الخطة بنجاح', 'vmp')]);
-        }
-
-        wp_send_json_error(['message' => __('لم يتم تحديث أي بيانات', 'vmp')]);
-    }
 
     /**
      * Ajax Admin Delete Plan functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_admin_delete_plan(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_subscriptions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $plan_id = (int) ($_POST['plan_id'] ?? 0);
-        if ($this->planRepository->delete($plan_id)) {
-            wp_send_json_success(['message' => __('تم حذف الخطة', 'vmp')]);
-        }
-
-        wp_send_json_error(['message' => __('حدث خطأ', 'vmp')]);
-    }
 
     /**
      * Ajax Admin Get Vendor Subscription functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_admin_get_vendor_subscription(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_subscriptions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $vendor_id = (int) ($_POST['vendor_id'] ?? 0);
-        $active = $this->repository->findActiveByVendor($vendor_id);
-        $plan = $active ? $this->planRepository->find((int) $active->plan_id) : null;
-
-        wp_send_json_success([
-            'subscription' => $active,
-            'plan' => $plan,
-        ]);
-    }
 
     /* ──────────────────────────────────────────────────────────── */
     /* طلبات تغيير الخطة                                           */
@@ -604,264 +291,30 @@ class Subscription extends AbstractModule
      *
      * @return void Output payload.
      */
-    public function ajax_request_plan_change(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول أولاً', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor || $vendor->status !== 'approved') {
-            wp_send_json_error(['message' => __('يجب أن تكون بائعاً معتمداً', 'vmp')]);
-        }
-
-        $new_plan_id = (int) ($_POST['plan_id'] ?? 0);
-        $new_plan = $this->planRepository->find($new_plan_id);
-        if (!$new_plan || !$new_plan->is_active) {
-            wp_send_json_error(['message' => __('الخطة غير موجودة أو غير متاحة', 'vmp')]);
-        }
-
-        $current = $this->repository->findActiveByVendor((int) $vendor->id);
-        if ($current && (int) $current->plan_id === $new_plan_id) {
-            wp_send_json_error(['message' => __('أنت مشترك بهذه الخطة بالفعل', 'vmp')]);
-        }
-
-        $pending = $this->repository->getPendingPlanChangeByVendor((int) $vendor->id);
-        if ($pending) {
-            wp_send_json_error(['message' => __('لديك طلب تغيير خطة معلق بالفعل، يرجى انتظار المراجعة.', 'vmp')]);
-        }
-
-        $request_id = $this->repository->requestPlanChange((int) $vendor->id, $new_plan_id);
-
-        if ($request_id) {
-            // إرسال إشعار للمشرف
-            $this->sendNotificationToAdmin($vendor, $new_plan, $request_id);
-
-            // إطلاق حدث طلب تغيير الخطة
-            $this->container->get('event_manager')->trigger(
-                'vmp_plan_change_requested',
-                $request_id,
-                (int) $vendor->id,
-                $new_plan_id
-            );
-
-            // تسجيل في السجلات
-            if (function_exists('vmp_log_info')) {
-                vmp_log_info(
-                    sprintf(
-                        __('البائع %s طلب تغيير الخطة إلى %s', 'vmp'),
-                        $vendor->store_name,
-                        $new_plan->name
-                    ),
-                    [
-                        'vendor_id' => $vendor->id,
-                        'plan_id' => $new_plan_id,
-                        'request_id' => $request_id,
-                    ],
-                    'Subscription'
-                );
-            }
-
-            wp_send_json_success([
-                'message' => __('تم إرسال طلب تغيير الخطة بنجاح، سيتم مراجعته من قبل المشرف وإشعارك عند الرد.', 'vmp'),
-                'request_id' => $request_id,
-            ]);
-        }
-
-        wp_send_json_error(['message' => __('حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى.', 'vmp')]);
-    }
 
     /**
      * Ajax Admin Approve Plan Change functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_admin_approve_plan_change(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-
-        if (!current_user_can('vmp_manage_subscriptions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $request_id = (int) ($_POST['request_id'] ?? 0);
-        if ($request_id <= 0) {
-            wp_send_json_error(['message' => __('معرف الطلب غير صالح', 'vmp')]);
-        }
-
-        if ($this->repository->approvePlanChange($request_id)) {
-            $subscription = $this->repository->find($request_id);
-            if ($subscription) {
-                $plan = $this->planRepository->find((int) $subscription->plan_id);
-                $vendor = $this->vendorRepository->find((int) $subscription->vendor_id);
-
-                if ($plan && $vendor) {
-                    // تحديث بيانات البائع
-                    $this->vendorRepository->update((int) $subscription->vendor_id, [
-                        'subscription_plan' => $plan->slug,
-                        'subscription_status' => 'active',
-                        'subscription_start' => current_time('mysql'),
-                        'subscription_expiry' => $subscription->end_date,
-                    ]);
-
-                    // إرسال إشعار للبائع
-                    $this->sendNotificationToVendor(
-                        $vendor,
-                        $plan,
-                        'approved',
-                        $subscription
-                    );
-
-                    // تسجيل نجاح
-                    if (function_exists('vmp_log_success')) {
-                        vmp_log_success(
-                            sprintf(
-                                __('تمت الموافقة على تغيير خطة البائع %s إلى %s', 'vmp'),
-                                $vendor->store_name,
-                                $plan->name
-                            ),
-                            [
-                                'vendor_id' => $vendor->id,
-                                'plan_id' => $plan->id,
-                                'request_id' => $request_id,
-                            ],
-                            'Subscription'
-                        );
-                    }
-
-                    // إطلاق حدث الموافقة
-                    $this->container->get('event_manager')->trigger(
-                        'vmp_plan_change_approved',
-                        $request_id,
-                        (int) $subscription->vendor_id,
-                        (int) $subscription->plan_id
-                    );
-                }
-            }
-            wp_send_json_success(['message' => __('تمت الموافقة على تغيير الخطة بنجاح وإرسال إشعار للبائع.', 'vmp')]);
-        }
-
-        wp_send_json_error(['message' => __('حدث خطأ أثناء الموافقة.', 'vmp')]);
-    }
 
     /**
      * Ajax Admin Reject Plan Change functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_admin_reject_plan_change(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-
-        if (!current_user_can('vmp_manage_subscriptions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $request_id = (int) ($_POST['request_id'] ?? 0);
-        $reason = sanitize_textarea_field($_POST['reason'] ?? '');
-
-        if ($request_id <= 0) {
-            wp_send_json_error(['message' => __('معرف الطلب غير صالح', 'vmp')]);
-        }
-
-        if ($this->repository->rejectPlanChange($request_id, $reason)) {
-            $subscription = $this->repository->find($request_id);
-            if ($subscription) {
-                $vendor = $this->vendorRepository->find((int) $subscription->vendor_id);
-                $plan = $this->planRepository->find((int) $subscription->plan_id);
-
-                if ($vendor) {
-                    // إرسال إشعار للبائع
-                    $this->sendNotificationToVendor(
-                        $vendor,
-                        $plan,
-                        'rejected',
-                        $subscription,
-                        $reason
-                    );
-
-                    // تسجيل تحذير
-                    if (function_exists('vmp_log_warning')) {
-                        vmp_log_warning(
-                            sprintf(
-                                __('تم رفض تغيير خطة البائع %s', 'vmp'),
-                                $vendor->store_name
-                            ),
-                            [
-                                'vendor_id' => $vendor->id,
-                                'plan_id' => $plan ? $plan->id : 0,
-                                'request_id' => $request_id,
-                                'reason' => $reason,
-                            ],
-                            'Subscription'
-                        );
-                    }
-
-                    // إطلاق حدث الرفض
-                    $this->container->get('event_manager')->trigger(
-                        'vmp_plan_change_rejected',
-                        $request_id,
-                        (int) $subscription->vendor_id,
-                        $reason
-                    );
-                }
-            }
-            wp_send_json_success(['message' => __('تم رفض تغيير الخطة وإرسال إشعار للبائع.', 'vmp')]);
-        }
-
-        wp_send_json_error(['message' => __('حدث خطأ أثناء الرفض.', 'vmp')]);
-    }
 
     /**
      * Ajax Get Pending Plan Changes functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_get_pending_plan_changes(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-
-        if (!current_user_can('vmp_manage_subscriptions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $pending = $this->repository->getPendingPlanChanges();
-        wp_send_json_success(['requests' => $pending]);
-    }
 
     /**
      * Ajax Cancel Plan Change functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_cancel_plan_change(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول أولاً', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
-        }
-
-        $pending = $this->repository->getPendingPlanChangeByVendor((int) $vendor->id);
-        if (!$pending) {
-            wp_send_json_error(['message' => __('لا يوجد طلب تغيير خطة معلق.', 'vmp')]);
-        }
-
-        if ($this->repository->forceDelete((int) $pending->id)) {
-            wp_send_json_success(['message' => __('تم إلغاء طلب تغيير الخطة.', 'vmp')]);
-        }
-
-        wp_send_json_error(['message' => __('حدث خطأ أثناء إلغاء الطلب.', 'vmp')]);
-    }
 
     /* ──────────────────────────────────────────────────────────── */
     /* دوال مساعدة للإشعارات                                       */

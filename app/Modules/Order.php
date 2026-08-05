@@ -245,101 +245,16 @@ class Order extends AbstractModule
      *
      * @return void Output payload.
      */
-    public function ajax_get_vendor_orders(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_orders')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $vendor_id = (int) ($_POST['vendor_id'] ?? 0);
-        $status = sanitize_text_field($_POST['status'] ?? '');
-        $limit = (int) ($_POST['limit'] ?? 20);
-        $offset = (int) ($_POST['offset'] ?? 0);
-
-        $orders = $this->repository->getByVendor($vendor_id, [
-            'status' => $status,
-            'limit' => $limit,
-            'offset' => $offset,
-        ]);
-
-        wp_send_json_success(['orders' => $orders]);
-    }
 
     /**
      * Ajax Get Order Details functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_get_order_details(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_orders')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $vendor_order_id = (int) ($_POST['vendor_order_id'] ?? 0);
-        $vendor_order = $this->repository->find($vendor_order_id);
-        if (!$vendor_order) {
-            wp_send_json_error(['message' => __('الطلب غير موجود', 'vmp')]);
-        }
-
-        $wc_order = wc_get_order($vendor_order->order_id);
-        $data = [
-            'vendor_order' => $vendor_order,
-            'order_number' => $wc_order ? $wc_order->get_order_number() : '',
-            'customer_name' => $wc_order ? $wc_order->get_billing_first_name() . ' ' . $wc_order->get_billing_last_name() : '',
-            'customer_email' => $wc_order ? $wc_order->get_billing_email() : '',
-            'order_date' => $wc_order ? $wc_order->get_date_created()->date('Y-m-d H:i') : '',
-        ];
-
-        wp_send_json_success($data);
-    }
 
     /**
      * Ajax Vendor Orders functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_vendor_orders(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-        if (!current_user_can('vmp_vendor_orders')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
-        }
-
-        $status = sanitize_text_field($_POST['status'] ?? '');
-        $limit = (int) ($_POST['limit'] ?? 20);
-        $offset = (int) ($_POST['offset'] ?? 0);
-
-        $orders = $this->repository->getByVendor((int) $vendor->id, [
-            'status' => $status,
-            'limit' => $limit,
-            'offset' => $offset,
-        ]);
-
-        $enriched = [];
-        foreach ($orders as $order) {
-            $wc_order = wc_get_order($order->order_id);
-            $enriched[] = [
-                'id' => (int) $order->id,
-                'order_id' => (int) $order->order_id,
-                'order_number' => $wc_order ? $wc_order->get_order_number() : $order->order_id,
-                'status' => $order->status,
-                'total' => (float) $order->total,
-                'vendor_earnings' => (float) $order->vendor_earnings,
-                'commission' => (float) $order->commission,
-                'customer_name' => $wc_order ? $wc_order->get_billing_first_name() . ' ' . $wc_order->get_billing_last_name() : '',
-                'created_at' => $order->created_at,
-            ];
-        }
-
-        wp_send_json_success(['orders' => $enriched]);
-    }
 }

@@ -99,157 +99,34 @@ class Commission extends AbstractModule
      *
      * @return void Output payload.
      */
-    public function ajax_get_commissions(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_commissions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $status = sanitize_text_field($_POST['status'] ?? '');
-        $limit = (int) ($_POST['limit'] ?? 50);
-        $offset = (int) ($_POST['offset'] ?? 0);
-
-        $commissions = $this->repository->getAllPending($limit);
-
-        wp_send_json_success(['commissions' => $commissions]);
-    }
 
     /**
      * Ajax Pay Commission functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_pay_commission(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_commissions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $commission_id = (int) ($_POST['commission_id'] ?? 0);
-        $commission = $this->repository->find($commission_id);
-
-        if (!$commission) {
-            wp_send_json_error(['message' => __('العمولة غير موجودة', 'vmp')]);
-        }
-        if ($commission->status === 'paid') {
-            wp_send_json_error(['message' => __('تم دفع هذه العمولة مسبقاً', 'vmp')]);
-        }
-
-        if ($this->repository->markAsPaid($commission_id)) {
-            $this->container->get('logger')->info('تم دفع عمولة', [
-                'commission_id' => $commission_id,
-                'vendor_id' => $commission->vendor_id,
-                'amount' => $commission->commission_amount,
-            ]);
-            $this->container->get('event_manager')->trigger(
-                'vmp_commission_paid',
-                $commission_id,
-                (int) $commission->vendor_id,
-                (float) $commission->commission_amount
-            );
-            wp_send_json_success(['message' => __('تم تسجيل الدفع', 'vmp')]);
-        }
-
-        wp_send_json_error(['message' => __('حدث خطأ', 'vmp')]);
-    }
 
     /**
      * Ajax Bulk Pay functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_bulk_pay(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_commissions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $ids = array_map('intval', $_POST['ids'] ?? []);
-        if (empty($ids)) {
-            wp_send_json_error(['message' => __('لم يتم تحديد أي عمولات', 'vmp')]);
-        }
-
-        $count = $this->repository->markBulkAsPaid($ids);
-        $this->container->get('logger')->info("تم دفع {$count} عمولة دفعياً", ['ids' => $ids]);
-
-        wp_send_json_success([
-            'message' => sprintf(__('تم تسجيل دفع %d عمولة', 'vmp'), $count),
-            'count' => $count,
-        ]);
-    }
 
     /**
      * Ajax Get Stats functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_get_stats(): void
-    {
-        check_ajax_referer('vmp_admin_nonce', 'nonce');
-        if (!current_user_can('vmp_manage_commissions')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $stats = $this->repository->getAdminStats();
-        wp_send_json_success(['stats' => $stats]);
-    }
 
     /**
      * Ajax Vendor Get Commissions functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_vendor_get_commissions(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-        if (!current_user_can('vmp_vendor_reports')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
-        }
-
-        $status = sanitize_text_field($_POST['status'] ?? '');
-        $date_from = sanitize_text_field($_POST['date_from'] ?? '');
-        $date_to = sanitize_text_field($_POST['date_to'] ?? '');
-
-        $commissions = $this->repository->getByVendor((int) $vendor->id, [
-            'status' => $status,
-            'date_from' => $date_from,
-            'date_to' => $date_to,
-            'limit' => 50,
-        ]);
-
-        wp_send_json_success(['commissions' => $commissions]);
-    }
 
     /**
      * Ajax Vendor Chart functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_vendor_chart(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-        if (!current_user_can('vmp_vendor_reports')) {
-            wp_send_json_error(['message' => __('غير مصرح لك', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
-        }
-
-        $months = (int) ($_POST['months'] ?? 12);
-        $data = $this->repository->getMonthlyStats((int) $vendor->id, $months);
-
-        wp_send_json_success(['chart_data' => $data]);
-    }
 }

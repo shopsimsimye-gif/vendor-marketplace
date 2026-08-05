@@ -271,90 +271,16 @@ class Template extends AbstractModule
      *
      * @return void Output payload.
      */
-    public function ajax_save_template(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول', 'vmp')]);
-        }
-
-        $user_id = get_current_user_id();
-        $vendor = $this->vendorRepository->findByUserId($user_id);
-        if (!$vendor) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
-        }
-
-        $template = sanitize_text_field($_POST['template'] ?? 'classic');
-        if (!isset($this->available_templates[$template])) {
-            $template = 'classic';
-        }
-
-        $font_family = sanitize_text_field($_POST['font_family'] ?? 'Cairo');
-        if (!isset($this->available_fonts[$font_family])) {
-            $font_family = 'Cairo';
-        }
-
-        $settings = [
-            'template' => $template,
-            'primary_color' => sanitize_hex_color($_POST['primary_color'] ?? '#6366f1'),
-            'secondary_color' => sanitize_hex_color($_POST['secondary_color'] ?? '#a5b4fc'),
-            'bg_color' => sanitize_hex_color($_POST['bg_color'] ?? '#ffffff'),
-            'text_color' => sanitize_hex_color($_POST['text_color'] ?? '#1e1b4b'),
-            'font_family' => $font_family,
-            'button_radius' => max(0, min(50, (int) ($_POST['button_radius'] ?? 8))),
-            'show_banner' => !empty($_POST['show_banner']),
-            'show_rating' => !empty($_POST['show_rating']),
-            'products_per_row' => max(1, min(4, (int) ($_POST['products_per_row'] ?? 3))),
-        ];
-
-        if (!empty($_POST['custom_css'])) {
-            $subscription_module = $this->container->get('module_manager')->get_module('subscription');
-            if ($subscription_module && !$subscription_module->has_feature((int) $vendor->id, 'custom_css')) {
-                wp_send_json_error(['message' => __('هذه الميزة غير متاحة في خطتك الحالية', 'vmp')]);
-            }
-            $settings['custom_css'] = wp_kses_post(wp_unslash($_POST['custom_css']));
-        }
-
-        update_user_meta($this->get_user_id_by_vendor((int) $vendor->id), 'vmp_template_settings', $settings);
-
-        wp_send_json_success(['message' => __('تم حفظ إعدادات القالب بنجاح', 'vmp')]);
-    }
 
     /**
      * Ajax Get Template Settings functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_get_template_settings(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول', 'vmp')]);
-        }
-
-        $vendor = $this->vendorRepository->findByUserId(get_current_user_id());
-        if (!$vendor) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
-        }
-
-        wp_send_json_success($this->get_vendor_template_settings((int) $vendor->id));
-    }
 
     /**
      * Ajax Get Templates List functionality helper.
      *
      * @return void Output payload.
      */
-    public function ajax_get_templates_list(): void
-    {
-        check_ajax_referer('vmp_public_nonce', 'nonce');
-
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => __('يجب تسجيل الدخول', 'vmp')]);
-        }
-
-        wp_send_json_success(array_values($this->available_templates));
-    }
 }

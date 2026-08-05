@@ -189,10 +189,8 @@ class Kernel
 
         $modules = [
             'vendor',        // ✅ وحدة البائع (تشمل هوكات إعادة التوجيه)
-            'product',
             'order',
             'commission',
-            'withdrawal',
             'subscription',
             'whatsapp',
             'template',
