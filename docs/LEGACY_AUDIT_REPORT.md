@@ -159,3 +159,44 @@ _لا يُنفّذ حذف أي Module كامل في نفس مرحلة إزالة
 2. Vendor.php: remove `@deprecated` and delete file when migration complete.
 3. AI Controllers: unify `app/Controllers/` vs `app/Modules/AI/Controllers/`.
 4. The 3 dead `ajax_*` in `app/Modules/Vendor/VendorHooks.php` (commented registrations) — can be stripped in a later pass.
+
+---
+
+## Phase 1C Execution Log (2026-08-06) — commit `442d269`
+
+### Decision (user-confirmed option أ1)
+- Delete `Report.php` (empty shell after ajax_* removal) + simplify dashboard canvas.
+
+### Evidence (pre-execution, authoritative)
+- `Report.php`: init() empty, 6 ajax_* bodies removed, private helpers `get_period_start`/`format_month_label` unused
+- `ReportController.php` (app/Controllers): does NOT reference `VMP\Modules\Report` class (docblock text only)
+- `load_module('report')` / `get_module('report')`: **0 live refs**
+- `ModuleManager::resolveModuleClass()`: null-safe (returns null on missing class)
+- JS `public.js:230` `initCharts`: `if (!ctx || typeof Chart === 'undefined') return;` — null-safe when canvas absent
+- Chart data served by `vmp_vendor_chart` → ReportController via CoreServiceProvider/RouteRegistry (independent of module class)
+
+### Changes
+| File | Change |
+|------|--------|
+| `app/Modules/Report.php` | `git rm` (commit `4426a`) |
+| `app/Core/Kernel.php` | removed `'report'` from `$modules` |
+| `public/templates/vendor-dashboard.php` | removed `class_exists` guard → `<canvas id="vmp-vendor-chart">` always renders |
+
+### Verification (authoritative: docker `1Panel-wordpress-t5ET`, WP 7.0.2)
+- [x] php -l: Kernel + template — PASS
+- [x] Architecture Guard: PASS — **0 Failures / 12 Warnings** (dead-code only)
+- [x] REST `/vmp/v1`: **10 routes (stable)
+- [x] wp-load: no fatal; `class_exists('VMP\Modules\Report') → **GONE**
+- [x] Kernel: `'report'` → ZERO references
+- [x] template line 136: `<canvas id="vmp-vendor-chart"></canvas>`
+- [x] git: repo **clean**, HEAD = `4426a`
+
+### Classification Update (Post-1C)
+| Module | Classification |
+|--------|----------------|
+| Notification / Commission / Order / Subscription / Template / Whatsapp / Settings / AI | Active |
+| Vendor | Transitional (@deprecated) |
+| Product / Withdrawal / RestAPI / Report | **Dead (removed in 1A/1B/1C)** |
+
+### Recovery
+`git show HEAD~1:app/Modules/Report.php` (still in `442a`'s parent `297a`) or `.qa_backups/report-removal-1c-20260806-0032/Report.php.deleted`.
