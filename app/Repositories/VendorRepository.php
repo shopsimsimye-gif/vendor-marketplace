@@ -165,7 +165,8 @@ class VendorRepository implements VendorRepositoryInterface
         if (!$vendor) {
             return new \WP_Error("vendor_not_found", __("البائع غير موجود.", "vmp"));
         }
-        if ($vendor->status !== "approved") {
+        $isStatusChange = isset($data['status']) && $data['status'] !== $vendor->status;
+        if ($vendor->status !== "approved" && !$isStatusChange) {
             return new \WP_Error("vendor_not_approved", __("لا يمكن تعديل بيانات بائع غير موافق عليه.", "vmp"));
         }
 
@@ -241,7 +242,13 @@ class VendorRepository implements VendorRepositoryInterface
             $new_balance = 0;
         }
 
-        return $this->update($id, ['balance' => $new_balance]);
+        $updated = $this->update($id, ['balance' => $new_balance]);
+        // update() قد يعيد WP_Error (مثلاً بائع غير موافق عليه) — عقد updateBalance هو bool
+        if ($updated instanceof \WP_Error) {
+            return false;
+        }
+
+        return $updated;
     }
 
     /**
