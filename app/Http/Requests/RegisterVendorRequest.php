@@ -27,27 +27,27 @@ class RegisterVendorRequest extends AbstractRequest
     {
         return [
             // الخطوة 1: بيانات الحساب
-            'user_email'     => ['required', 'email'],
-            'user_pass'      => ['required', 'string', 'min:8'],
-            'first_name'     => ['required', 'string', 'min:2', 'max:50'],
-            'last_name'      => ['required', 'string', 'min:2', 'max:50'],
-            'full_name'      => ['required', 'string', 'min:3', 'max:100'],
+            'user_email'      => ['required', 'email'],
+            'user_pass'       => ['required', 'string', 'min:8'],
+            'first_name'      => ['required', 'string', 'min:2', 'max:50', 'regex:/^[\p{L}\s\-]+$/u'],
+            'last_name'       => ['required', 'string', 'min:2', 'max:50', 'regex:/^[\p{L}\s\-]+$/u'],
+            'full_name'       => ['required', 'string', 'min:3', 'max:100'],
             
             // الخطوة 2: بيانات المتجر
-            'store_name'        => ['required', 'string', 'min:3', 'max:100'],
-            'store_slug'        => ['required', 'string', 'min:3', 'max:60', 'regex:/^[a-z0-9\-]+$/'],
-            'store_description' => ['string', 'max:500'],
-            'store_address'     => ['required', 'string', 'min:5', 'max:300'],
-            'store_phone'       => ['required', 'phone'],
-            'store_email'       => ['email'],
-            'whatsapp_number'   => ['phone'],
-            'store_logo'        => ['integer', 'min:0'],
-            'store_banner'      => ['integer', 'min:0'],
-            'license_file'      => ['integer', 'min:0'],
-            'plan_id'           => ['integer', 'min:0'],
+            'store_name'      => ['required', 'string', 'min:3', 'max:100', 'regex:/^[\p{L}\s\-0-9]+$/u'],
+            'store_slug'      => ['nullable', 'string', 'min:3', 'max:60', 'regex:/^[a-z0-9\-]+$/'],
+            'store_description' => ['nullable', 'string', 'max:500'],
+            'store_address'   => ['required', 'string', 'min:5', 'max:300'],
+            'store_phone'     => ['required', 'string', 'regex:/^\+?[0-9]{7,15}$/'],
+            'store_email'     => ['nullable', 'email'],
+            'whatsapp_number' => ['nullable', 'string', 'regex:/^\+?[0-9]{7,15}$/'],
+            'store_logo'      => ['nullable', 'integer', 'min:1'],
+            'store_banner'    => ['nullable', 'integer', 'min:1'],
+            'license_file'    => ['nullable', 'integer', 'min:1'],
+            'plan_id'         => ['nullable', 'integer', 'min:1'],
             
             // الخطوة 3: الشروط
-            'terms_accepted'    => ['required', 'boolean'],
+            'terms_accepted'  => ['required', 'boolean', 'accepted'],
         ];
     }
 
@@ -57,19 +57,19 @@ class RegisterVendorRequest extends AbstractRequest
     protected function attributes(): array
     {
         return [
-            'user_email'      => __('البريد الإلكتروني', 'vmp'),
-            'user_pass'       => __('كلمة المرور', 'vmp'),
-            'first_name'      => __('الاسم الأول', 'vmp'),
-            'last_name'       => __('الاسم الأخير', 'vmp'),
-            'full_name'       => __('الاسم الكامل', 'vmp'),
-            'store_name'      => __('اسم المتجر', 'vmp'),
-            'store_slug'      => __('رابط المتجر', 'vmp'),
+            'user_email'        => __('البريد الإلكتروني', 'vmp'),
+            'user_pass'         => __('كلمة المرور', 'vmp'),
+            'first_name'        => __('الاسم الأول', 'vmp'),
+            'last_name'         => __('الاسم الأخير', 'vmp'),
+            'full_name'         => __('الاسم الكامل', 'vmp'),
+            'store_name'        => __('اسم المتجر', 'vmp'),
+            'store_slug'        => __('رابط المتجر', 'vmp'),
             'store_description' => __('وصف المتجر', 'vmp'),
-            'store_address'   => __('عنوان المتجر', 'vmp'),
-            'store_phone'     => __('رقم الهاتف', 'vmp'),
-            'store_email'     => __('بريد المتجر', 'vmp'),
-            'whatsapp_number' => __('رقم واتساب', 'vmp'),
-            'terms_accepted'  => __('الموافقة على الأحكام', 'vmp'),
+            'store_address'     => __('عنوان المتجر', 'vmp'),
+            'store_phone'       => __('رقم الهاتف', 'vmp'),
+            'store_email'       => __('بريد المتجر', 'vmp'),
+            'whatsapp_number'   => __('رقم واتساب', 'vmp'),
+            'terms_accepted'    => __('الموافقة على الأحكام', 'vmp'),
         ];
     }
 
@@ -80,57 +80,46 @@ class RegisterVendorRequest extends AbstractRequest
     {
         return [
             'store_name.required'      => __('اسم المتجر مطلوب', 'vmp'),
-            'store_slug.required'      => __('رابط المتجر مطلوب', 'vmp'),
+            'store_name.regex'         => __('اسم المتجر يحتوي على أحرف غير مسموحة.', 'vmp'),
             'store_slug.regex'         => __('رابط المتجر يجب أن يحتوي على حروف إنجليزية صغيرة وأرقام وشرطات فقط', 'vmp'),
             'store_address.required'   => __('عنوان المتجر مطلوب', 'vmp'),
             'store_phone.required'     => __('رقم الهاتف مطلوب', 'vmp'),
-            'store_phone.phone'        => __('رقم الهاتف غير صالح', 'vmp'),
+            'store_phone.regex'        => __('رقم الهاتف غير صالح', 'vmp'),
             'terms_accepted.required'  => __('يجب الموافقة على الشروط والأحكام', 'vmp'),
-            'terms_accepted.boolean'   => __('يجب الموافقة على الشروط والأحكام', 'vmp'),
+            'terms_accepted.accepted'  => __('يجب الموافقة على الشروط والأحكام', 'vmp'),
             'user_email.required'      => __('البريد الإلكتروني مطلوب', 'vmp'),
             'user_email.email'         => __('البريد الإلكتروني غير صالح', 'vmp'),
             'user_pass.required'       => __('كلمة المرور مطلوبة', 'vmp'),
             'user_pass.min'            => __('كلمة المرور يجب أن تكون 8 أحرف على الأقل', 'vmp'),
+            'first_name.regex'         => __('الاسم الأول يجب أن يحتوي على أحرف فقط.', 'vmp'),
+            'last_name.regex'          => __('الاسم الأخير يجب أن يحتوي على أحرف فقط.', 'vmp'),
         ];
     }
 
     /**
-     * تنفيذ التحققات الإضافية المعقدة (مثل فحص قاعدة البيانات)
+     * تنفيذ التحققات الإضافية المعقدة (DB checks)
      */
     public function validate(): bool
     {
-        // 1. التحقق الأساسي بناءً على rules()
         if (!parent::validate()) {
             return false;
         }
 
         $errors = [];
 
-        // 2. تحقق من أن اسم المتجر لا يحتوي على رموز غير مسموحة
-        $storeName = $this->string('store_name');
-        if (!preg_match('/^[\p{L}\s\-0-9]+$/u', $storeName)) {
-            $errors[] = __('اسم المتجر يحتوي على أحرف غير مسموحة.', 'vmp');
-        }
-
-        // 3. تحقق من أن البريد الإلكتروني إذا كان مسجلاً مسبقاً
-        $email = $this->string('user_email');
-        if (email_exists($email)) {
+        // 1. التحقق من عدم تكرار البريد الإلكتروني
+        $email = $this->input('user_email');
+        if ($email && email_exists($email)) {
             $errors[] = __('هذا البريد الإلكتروني مسجّل مسبقاً.', 'vmp');
         }
 
-        // 4. التحقق من صحة الهاتف
-        $phone = $this->string('store_phone');
-        if (empty($phone) || !preg_match('/^\+?[0-9]{7,15}$/', preg_replace('/\s/', '', $phone))) {
-            $errors[] = __('رقم الهاتف غير صالح أو مفقود.', 'vmp');
+        // 2. توليد slug تلقائياً إذا لم يُرسل
+        $slug = $this->input('store_slug');
+        if (empty($slug)) {
+            $slug = sanitize_title($this->input('store_name', ''));
         }
 
-        // 5. التحقق من أن الـ slug لا يحتوي إلا على أحرف مناسبة
-        $slug = $this->string('store_slug') ?: sanitize_title($storeName);
-        if ($slug && !preg_match('/^[a-z0-9\-]+$/', $slug)) {
-            $errors[] = $this->messages()['store_slug.regex'];
-        }
-
-        // 6. التحقق من عدم تكرار الـ slug باستخدام VendorRepositoryInterface
+        // 3. التحقق من عدم تكرار الـ slug
         if ($slug) {
             /** @var VendorRepositoryInterface $vendorRepo */
             $vendorRepo = Container::getInstance()->make(VendorRepositoryInterface::class);
@@ -139,31 +128,29 @@ class RegisterVendorRequest extends AbstractRequest
             }
         }
 
-        // 7. التحقق من الأسماء (الأول والأخير)
-        $firstName = $this->string('first_name');
-        if ($firstName && !preg_match('/^[\p{L}\s\-]+$/u', $firstName)) {
-            $errors[] = __('الاسم الأول يجب أن يحتوي على أحرف فقط.', 'vmp');
-        }
-
-        $lastName = $this->string('last_name');
-        if ($lastName && !preg_match('/^[\p{L}\s\-]+$/u', $lastName)) {
-            $errors[] = __('الاسم الأخير يجب أن يحتوي على أحرف فقط.', 'vmp');
-        }
-
-        // 8. تحقق من قبول الأحكام
-        if (!$this->bool('terms_accepted')) {
-            $errors[] = __('يجب الموافقة على الأحكام والشروط.', 'vmp');
-        }
-
         if (!empty($errors)) {
-            // [QA 2026-08-02] استخدام addError() بدل Reflection — أسرع وأنظف.
             foreach ($errors as $error) {
                 $this->addError($error);
             }
-
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Validated functionality helper.
+     *
+     * @return array Output payload.
+     */
+    public function validated(): array
+    {
+        $data = parent::validated();
+
+        if (empty($data['store_slug']) && !empty($data['store_name'])) {
+            $data['store_slug'] = sanitize_title($data['store_name']);
+        }
+
+        return $data;
     }
 }

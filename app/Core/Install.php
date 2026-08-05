@@ -59,8 +59,16 @@ class Install {
      * @return void
      */
     public static function upgrade(): void {
+        $installed = get_option('vmp_db_version', '0.0.0');
+
         self::create_tables();
         self::migrate_existing_tables();
+
+        if (version_compare($installed, VMP_VERSION, '<')) {
+            self::setup_roles();
+            self::create_cron_jobs();
+        }
+
         update_option('vmp_db_version', VMP_VERSION);
     }
 
@@ -644,23 +652,31 @@ class Install {
             $vendor_role->add_cap('upload_files');
         }
 
-        // ── دور المشرف ──
+        // ── دور المشرف (أدمن الموقع) ──
+        $admin_caps = [
+            'vmp_manage_vendors',
+            'vmp_manage_products',
+            'vmp_manage_orders',
+            'vmp_manage_commissions',
+            'vmp_manage_withdrawals',
+            'vmp_manage_reports',
+            'vmp_manage_settings',
+            'vmp_manage_subscriptions',
+            'manage_vmp_requests',
+        ];
+
         $admin_role = get_role('administrator');
-
         if ($admin_role) {
-            $admin_caps = [
-                'vmp_manage_vendors',
-                'vmp_manage_products',
-                'vmp_manage_orders',
-                'vmp_manage_commissions',
-                'vmp_manage_withdrawals',
-                'vmp_manage_reports',
-                'vmp_manage_settings',
-                'vmp_manage_subscriptions',
-            ];
-
             foreach ($admin_caps as $cap) {
                 $admin_role->add_cap($cap);
+            }
+        }
+
+        // ── دور مدير المتجر (Shop Manager) — يحصل على نفس صلاحيات الإدارة ──
+        $shop_manager_role = get_role('shop_manager');
+        if ($shop_manager_role) {
+            foreach ($admin_caps as $cap) {
+                $shop_manager_role->add_cap($cap);
             }
         }
     }

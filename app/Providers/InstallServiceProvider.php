@@ -46,12 +46,6 @@ class InstallServiceProvider extends ServiceProvider
             }
         }, 5);
 
-        add_action('init', static function (): void {
-            $vendor = get_role('vmp_vendor');
-            if ($vendor && !$vendor->has_cap('upload_files')) {
-                $vendor->add_cap('upload_files');
-            }
-        }, 6);
 
         add_action('init', static function (): void {
             if (get_option('vmp_flush_rewrite')) {

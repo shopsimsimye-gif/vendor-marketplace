@@ -1,0 +1,115 @@
+.vmp-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--vmp-text);
+    margin: 28px 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--vmp-border);
+}
+.vmp-section-icon { font-size: 20px; }
+.vmp-badge-plan {
+    margin-right: auto;
+    background: var(--vmp-primary-light);
+    color: var(--vmp-primary);
+    padding: 2px 14px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.vmp-notice-info strong { font-size: 14px; }
+
+/* ── حقول مقفلة (Upgrade Required) ── */
+.vmp-field-locked { opacity: 0.7; }
+.vmp-label-disabled {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--vmp-text-muted);
+}
+.vmp-lock-icon {
+    font-size: 12px;
+    cursor: help;
+    opacity: 0.8;
+}
+.vmp-hint-locked {
+    color: #f59e0b;
+    font-weight: 500;
+}
+
+/* ── رفع الصور ── */
+.vmp-image-upload {
+    border: 2px dashed var(--vmp-border);
+    border-radius: var(--vmp-radius);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--vmp-transition);
+    position: relative;
+    overflow: hidden;
+}
+.vmp-image-upload:hover {
+    border-color: var(--vmp-primary);
+    background: var(--vmp-primary-light);
+}
+.vmp-image-upload .upload-icon { font-size: 36px; margin-bottom: 10px; }
+.vmp-image-upload p { color: var(--vmp-text-muted); font-size: 13px; margin: 0; }
+.vmp-image-preview {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: var(--vmp-radius-sm);
+    display: none;
+}
+.vmp-image-preview.show { display: block; }
+
+.vmp-remove-image {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+    z-index: 2;
+}
+.vmp-remove-image:hover {
+    transform: scale(1.1);
+    background: #dc2626;
+}
+
+/* ── Toast Notifications ── */
+.vmp-toast {
+    background: #1e293b;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: vmpToastSlide 0.3s ease-out;
+    pointer-events: auto;
+    min-width: 280px;
+    justify-content: center;
+}
+.vmp-toast.success { background: #10b981; }
+.vmp-toast.error { background: #ef4444; }
+.vmp-toast.warning { background: #f59e0b; }
+
+@keyframes vmpToastSlide {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}

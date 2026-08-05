@@ -47,12 +47,17 @@ class Report extends AbstractModule
      */
     public function init(): void
     {
-        add_action('wp_ajax_vmp_vendor_report', [$this, 'ajax_vendor_report']);
-        add_action('wp_ajax_vmp_vendor_chart', [$this, 'ajax_vendor_chart']);
-        add_action('wp_ajax_vmp_vendor_summary', [$this, 'ajax_vendor_summary']);
-        add_action('wp_ajax_vmp_admin_report', [$this, 'ajax_admin_report']);
-        add_action('wp_ajax_vmp_admin_chart', [$this, 'ajax_admin_chart']);
-        add_action('wp_ajax_vmp_admin_top_vendors', [$this, 'ajax_admin_top_vendors']);
+        // [QA 2026-08-05] Phase B — تم نقل تسجيل جميع مسارات AJAX إلى RouteRegistry
+        // في CoreServiceProvider (عبر ReportController). المسارات الستة:
+        //   vmp_vendor_summary, vmp_vendor_report, vmp_vendor_chart,
+        //   vmp_admin_report,   vmp_admin_chart,   vmp_admin_top_vendors
+        // الأسطر أدناه معطّلة لتجنب الازدواجية (الإبقاء للتوثيق).
+        // add_action('wp_ajax_vmp_vendor_report', [$this, 'ajax_vendor_report']);
+        // add_action('wp_ajax_vmp_vendor_chart', [$this, 'ajax_vendor_chart']);
+        // add_action('wp_ajax_vmp_vendor_summary', [$this, 'ajax_vendor_summary']);
+        // add_action('wp_ajax_vmp_admin_report', [$this, 'ajax_admin_report']);
+        // add_action('wp_ajax_vmp_admin_chart', [$this, 'ajax_admin_chart']);
+        // add_action('wp_ajax_vmp_admin_top_vendors', [$this, 'ajax_admin_top_vendors']);
     }
 
     /**

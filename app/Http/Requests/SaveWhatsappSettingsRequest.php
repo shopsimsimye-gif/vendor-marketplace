@@ -6,8 +6,6 @@ defined('ABSPATH') || exit;
 /**
  * Class SaveWhatsappSettingsRequest
  *
- * Description of administrative platform component SaveWhatsappSettingsRequest.
- *
  * @package vendor-marketplace
  */
 class SaveWhatsappSettingsRequest extends AbstractRequest
@@ -19,7 +17,7 @@ class SaveWhatsappSettingsRequest extends AbstractRequest
      */
     public function authorize(): bool
     {
-        return is_user_logged_in();
+        return current_user_can('vmp_vendor');
     }
 
     /**
@@ -30,8 +28,21 @@ class SaveWhatsappSettingsRequest extends AbstractRequest
     protected function rules(): array
     {
         return [
-            'whatsapp_number'  => ['string'],
-            'whatsapp_message' => ['string'],
+            'whatsapp_number'  => ['nullable', 'string', 'regex:/^\+?[0-9]{7,15}$/'],
+            'whatsapp_message' => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    /**
+     * Attributes functionality helper.
+     *
+     * @return array Output payload.
+     */
+    protected function attributes(): array
+    {
+        return [
+            'whatsapp_number'  => __('رقم واتساب', 'vmp'),
+            'whatsapp_message' => __('رسالة واتساب', 'vmp'),
         ];
     }
 }

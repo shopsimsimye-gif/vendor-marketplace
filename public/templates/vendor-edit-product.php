@@ -148,8 +148,6 @@ $commission_rate = $plan ? (float) $plan->commission_rate : 10;
 
 <div class="vmp-loading"><div class="vmp-spinner"></div></div>
 
-<script>
-window.vmp_commission_rate = <?php echo $commission_rate; ?>;
-</script>
+
 
 

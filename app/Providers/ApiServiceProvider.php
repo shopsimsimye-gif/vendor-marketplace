@@ -28,11 +28,14 @@ class ApiServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // تحميل مسارات تسجيل البائع
-        $registration_routes = VMP_PLUGIN_DIR . 'app/Modules/VendorRegistration/Rest/routes.php';
-        if (file_exists($registration_routes)) {
-            require_once $registration_routes;
-        }
+        // [QA 2026-08-05] مسارات تسجيل البائع أحادية الخطوة (register-guest/apply)
+        // تُسجَّل الآن في VendorServiceProvider عبر RestVendorRegistrationController.
+        // تمت إزالة require_once لـ Rest/routes.php (الوحدة القديمة) لأنها كانت:
+        //   1) تُكرر تسجيل register-guest/apply (ازدواج بدون خطأ لكن غير نظيف)
+        //   2) تسجّل نقاطاً ميتة: /vendor/register, /vendor/draft, /vendor/store/setup,
+        //      /vendor/store, /admin/vendor/* (لا يستخدمها أي JS حي؛ اللوحة الإدارية
+        //      تستخدم VendorRequestRepository::approve() مباشرة، لا REST)
+        // النسخة الاحتياطية: .qa_backups/dead-routes-remove-20260805/
 
         add_action('rest_api_init', function () {
             // تسجيل مسارات البائعين

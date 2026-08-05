@@ -1,91 +1,65 @@
 <?php
+/**
+ * AbstractViewModel — الكلاس الأساسي المجرد
+ *
+ * @package VMP\Http\ViewModels
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\ViewModels;
 
 defined('ABSPATH') || exit;
 
-use VMP\DTO\OrderDTO;
-
-/**
- * OrderViewModel — يُحضّر بيانات الطلب للعرض في القوالب
- */
-class OrderViewModel extends AbstractViewModel
+abstract class AbstractViewModel
 {
-    public function __construct(
-        private OrderDTO $order
-    ) {}
+    /**
+     * تحويل الـ ViewModel إلى مصفوفة جاهزة للقالب
+     */
+    abstract public function toArray(): array;
 
     /**
-     * ToArray functionality helper.
-     *
-     * @return array Output payload.
+     * تمرير المصفوفة إلى نطاق القالب
      */
-    public function toArray(): array
+    public function toViewData(): array
     {
-        return [
-            'id'              => $this->order->id,
-            'order_id'        => $this->order->orderId,
-            'parent_order_id' => $this->order->parentOrderId,
-            'vendor_id'       => $this->order->vendorId,
-            'status'          => $this->order->status,
-            'status_label'    => $this->getStatusLabel(),
-            'status_class'    => $this->getStatusClass(),
-            'total'           => $this->money($this->order->total),
-            'total_raw'       => $this->order->total,
-            'commission'      => $this->money($this->order->commission),
-            'commission_raw'  => $this->order->commission,
-            'vendor_earnings' => $this->money($this->order->vendorEarnings),
-            'vendor_earnings_raw' => $this->order->vendorEarnings,
-            'created_at'      => $this->formatDate($this->order->createdAt),
-            'admin_url'       => $this->url(admin_url('post.php?post=' . $this->order->parentOrderId . '&action=edit')),
-        ];
+        return $this->toArray();
     }
 
     /**
-     * GetStatusLabel functionality helper.
-     *
-     * @return string Output payload.
+     * الهروب من نص HTML
      */
-    private function getStatusLabel(): string
+    protected function e(string $value): string
     {
-        $labels = [
-            'pending'    => __('قيد الانتظار', 'vmp'),
-            'processing' => __('قيد المعالجة', 'vmp'),
-            'completed'  => __('مكتمل', 'vmp'),
-            'cancelled'  => __('ملغي', 'vmp'),
-            'refunded'   => __('مسترجع', 'vmp'),
-            'on-hold'    => __('معلّق', 'vmp'),
-        ];
-        return $labels[$this->order->status] ?? $this->order->status;
+        return esc_html($value);
     }
 
     /**
-     * GetStatusClass functionality helper.
-     *
-     * @return string Output payload.
+     * الهروب من قيمة Attribute
      */
-    private function getStatusClass(): string
+    protected function attr(string $value): string
     {
-        $classes = [
-            'pending'    => 'vmp-badge--warning',
-            'processing' => 'vmp-badge--info',
-            'completed'  => 'vmp-badge--success',
-            'cancelled'  => 'vmp-badge--danger',
-            'refunded'   => 'vmp-badge--secondary',
-            'on-hold'    => 'vmp-badge--warning',
-        ];
-        return $classes[$this->order->status] ?? '';
+        return esc_attr($value);
     }
 
     /**
-     * FormatDate functionality helper.
-     *
-     * @param ?string $date Description index.
-     * @return string Output payload.
+     * الهروب من URL
      */
-    private function formatDate(?string $date): string
+    protected function url(string $value): string
     {
-        if (!$date) return '';
-        $timestamp = strtotime($date);
-        return $timestamp ? date_i18n(get_option('date_format'), $timestamp) : $date;
+        return esc_url($value);
+    }
+
+    /**
+     * تنسيق المبلغ المالي
+     *
+     * @param float $amount
+     * @return string HTML (يُستخدم في القوالب فقط)
+     */
+    protected function money(float $amount): string
+    {
+        if (function_exists('wc_price')) {
+            return wc_price($amount);
+        }
+        return number_format($amount, 2) . ' ' . get_woocommerce_currency();
     }
 }

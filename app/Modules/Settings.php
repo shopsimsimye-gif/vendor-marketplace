@@ -26,16 +26,16 @@ class Settings extends AbstractModule
      */
     public function init(): void
     {
-        // تسجيل إجراء حفظ الإعدادات
-        add_action('wp_ajax_vmp_admin_save_settings', [$this, 'save_settings']);
-
-        // تسجيل إجراء جلب الإعدادات (للتطوير)
-        add_action('wp_ajax_vmp_admin_get_settings', [$this, 'get_settings']);
-
-        // ✅ إضافة أكشنات الإشعارات
-        add_action('wp_ajax_vmp_mark_notice_read', [$this, 'mark_notice_read']);
-        add_action('wp_ajax_vmp_mark_all_notices_read', [$this, 'mark_all_notices_read']);
-        add_action('wp_ajax_vmp_test_email', [$this, 'test_email']);
+        // [QA 2026-08-05] Phase C — تم نقل تسجيل جميع مسارات AJAX إلى RouteRegistry
+        // في CoreServiceProvider (عبر SettingsController). المسارات الخمسة:
+        //   vmp_admin_save_settings, vmp_admin_get_settings, vmp_mark_notice_read,
+        //   vmp_mark_all_notices_read, vmp_test_email
+        // الأسطر أدناه معطّلة لتجنب الازدواجية (الإبقاء للتوثيق).
+        // add_action('wp_ajax_vmp_admin_save_settings', [$this, 'save_settings']);
+        // add_action('wp_ajax_vmp_admin_get_settings', [$this, 'get_settings']);
+        // add_action('wp_ajax_vmp_mark_notice_read', [$this, 'mark_notice_read']);
+        // add_action('wp_ajax_vmp_mark_all_notices_read', [$this, 'mark_all_notices_read']);
+        // add_action('wp_ajax_vmp_test_email', [$this, 'test_email']);
     }
 
     /**
@@ -284,6 +284,47 @@ class Settings extends AbstractModule
     /**
      * ✅ تحديد إشعار كمقروء (AJAX)
      */
+
+    /**
+     * ✅ إضافة إشعار في لوحة تحكم البائع (دالة عامة)
+     * يمكن استدعاؤها من أي مكان لإضافة إشعار للبائع
+     */
+    public function add_vendor_dashboard_notice(int $vendor_id, string $title, string $message, string $type = "success"): void
+    {
+        $notices = get_user_meta($vendor_id, "vmp_dashboard_notices", true);
+        if (!is_array($notices)) {
+            $notices = [];
+        }
+
+        $notices[] = [
+            "id" => uniqid(),
+            "title" => $title,
+            "message" => $message,
+            "type" => $type,
+            "created_at" => current_time("mysql"),
+            "read" => false,
+        ];
+
+        // الاحتفاظ بأحدث 50 إشعار فقط
+        if (count($notices) > 50) {
+            $notices = array_slice($notices, -50);
+        }
+
+        update_user_meta($vendor_id, "vmp_dashboard_notices", $notices);
+    }
+
+    /**
+     * ✅ إضافة إشعار لجميع البائعين (للإعلانات العامة)
+     */
+    public function add_notice_to_all_vendors(string $title, string $message, string $type = "info"): void
+    {
+        global $wpdb;
+        $vendor_ids = $wpdb->get_col("SELECT id FROM {$wpdb->prefix}vmp_vendors WHERE status = \"approved\"");
+        foreach ($vendor_ids as $vendor_id) {
+            $this->add_vendor_dashboard_notice((int) $vendor_id, $title, $message, $type);
+        }
+    }
+
     public function mark_notice_read(): void
     {
         check_ajax_referer('vmp_public_nonce', 'nonce');
@@ -410,4 +451,123 @@ class Settings extends AbstractModule
             wp_send_json_error(['message' => $e->getMessage()]);
         }
     }
+
+    /**
+     * ✅ إشعار عند استلام طلب جديد
+     */
+    public function on_order_placed_vendor_notice(int $vendor_order_id, int $parent_order_id, int $vendor_id): void
+    {
+        $this->add_vendor_dashboard_notice(
+            $vendor_id,
+            __("طلب جديد!", "vmp"),
+            sprintf(__("لديك طلب جديد #%d", "vmp"), $parent_order_id),
+            "success"
+        );
+    }
+
+    /**
+     * ✅ إشعار عند قبول منتج
+     */
+    public function on_product_approved_vendor_notice(int $vendor_product_id, int $product_id, int $vendor_id): void
+    {
+        $product = wc_get_product($product_id);
+        $product_name = $product ? $product->get_name() : __("منتج", "vmp");
+        
+        $this->add_vendor_dashboard_notice(
+            $vendor_id,
+            __("تم قبول منتجك", "vmp"),
+            sprintf(__("تم قبول منتجك \"%s\" وهو الآن متاح للبيع.", "vmp"), $product_name),
+            "success"
+        );
+    }
+
+    /**
+     * ✅ إشعار عند رفض منتج
+     */
+    public function on_product_rejected_vendor_notice(int $vendor_product_id, int $product_id, int $vendor_id, string $reason = ""): void
+    {
+        $product = wc_get_product($product_id);
+        $product_name = $product ? $product->get_name() : __("منتج", "vmp");
+        
+        $message = sprintf(__("تم رفض منتجك \"%s\".", "vmp"), $product_name);
+        if ($reason) {
+            $message .= " " . sprintf(__("السبب: %s", "vmp"), $reason);
+        }
+        
+        $this->add_vendor_dashboard_notice(
+            $vendor_id,
+            __("تم رفض منتج", "vmp"),
+            $message,
+            "error"
+        );
+    }
+
+    /**
+     * ✅ إشعار عند الموافقة على سحب
+     */
+    public function on_withdrawal_approved_vendor_notice(int $withdrawal_id, int $vendor_id, float $amount): void
+    {
+        $this->add_vendor_dashboard_notice(
+            $vendor_id,
+            __("تم الموافقة على السحب", "vmp"),
+            sprintf(__("تم الموافقة على طلب سحب بقيمة %s", "vmp"), wc_price($amount)),
+            "success"
+        );
+    }
+
+    /**
+     * ✅ إشعار عند رفض سحب
+     */
+    public function on_withdrawal_rejected_vendor_notice(int $withdrawal_id, int $vendor_id, float $amount, string $reason = ""): void
+    {
+        $message = sprintf(__("تم رفض طلب سحب بقيمة %s.", "vmp"), wc_price($amount));
+        if ($reason) {
+            $message .= " " . sprintf(__("السبب: %s", "vmp"), $reason);
+        }
+        
+        $this->add_vendor_dashboard_notice(
+            $vendor_id,
+            __("تم رفض السحب", "vmp"),
+            $message,
+            "error"
+        );
+    }
+
+    /**
+     * ✅ إشعار عند قبول البائع
+     */
+    public function on_vendor_approved_notice(int $vendor_id): void
+    {
+        $vendor = $this->vendorRepository->find($vendor_id);
+        if (!$vendor) return;
+        
+        $this->add_vendor_dashboard_notice(
+            $vendor_id,
+            __("تهانينا! تم قبول طلبك", "vmp"),
+            sprintf(__("مرحباً %s! تم قبول طلبك كبائع. يمكنك الآن البدء في إضافة منتجاتك.", "vmp"), $vendor->store_name),
+            "success"
+        );
+    }
+
+    /**
+     * ✅ إشعار عند رفض البائع
+     */
+    public function on_vendor_rejected_notice(int $vendor_id, string $reason = ""): void
+    {
+        $vendor = $this->vendorRepository->find($vendor_id);
+        if (!$vendor) return;
+        
+        $message = sprintf(__("نعتذر %s، تم رفض طلبك كبائع.", "vmp"), $vendor->store_name);
+        if ($reason) {
+            $message .= " " . sprintf(__("السبب: %s", "vmp"), $reason);
+        }
+        
+        $this->add_vendor_dashboard_notice(
+            $vendor_id,
+            __("تم رفض طلب التسجيل", "vmp"),
+            $message,
+            "error"
+        );
+    }
+
 }

@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 // ── التحقق من البائع ──
 $user_id = get_current_user_id();
 if (!$user_id) {
-    echo '<div class="vmp-notice vmp-notice-error">' . __('يجب تسجيل الدخول أولاً.', 'vmp') . '</div>';
+    echo '<div class="vmp-notice vmp-notice-error">' . esc_html__('يجب تسجيل الدخول أولاً.', 'vmp') . '</div>';
     return;
 }
 
@@ -14,11 +14,11 @@ $vendor_repo = \VMP\Core\Container::getInstance()->make(\VMP\Contracts\VendorRep
 $vendor = $vendor_repo->findByUserId($user_id);
 
 if (!$vendor) {
-    echo '<div class="vmp-notice vmp-notice-error">' . __('البائع غير موجود.', 'vmp') . '</div>';
+    echo '<div class="vmp-notice vmp-notice-error">' . esc_html__('البائع غير موجود.', 'vmp') . '</div>';
     return;
 }
 if ($vendor->status !== 'approved') {
-    echo '<div class="vmp-notice vmp-notice-warning">' . __('حسابك قيد المراجعة أو غير معتمد.', 'vmp') . '</div>';
+    echo '<div class="vmp-notice vmp-notice-warning">' . esc_html__('حسابك قيد المراجعة أو غير معتمد.', 'vmp') . '</div>';
     return;
 }
 
@@ -33,11 +33,20 @@ $has_social   = !empty($features['social_links']);
 $has_video    = !empty($features['product_video']);
 $has_address  = !empty($features['store_address']);
 
-$logo_url   = $vendor->store_logo ? wp_get_attachment_url($vendor->store_logo) : '';
-$banner_url = $vendor->store_banner ? wp_get_attachment_url($vendor->store_banner) : '';
+// ── استخدام wp_get_attachment_image_url بدلاً من wp_get_attachment_url ──
+$logo_url   = ($vendor->store_logo && wp_attachment_is_image($vendor->store_logo)) 
+    ? wp_get_attachment_image_url($vendor->store_logo, 'medium') 
+    : '';
+$banner_url = ($vendor->store_banner && wp_attachment_is_image($vendor->store_banner)) 
+    ? wp_get_attachment_image_url($vendor->store_banner, 'large') 
+    : '';
 
 $user = wp_get_current_user();
-$nav_file = VMP_PLUGIN_DIR . 'public/templates/partials/vendor-nav.php';
+
+// ── التأكد من تحميل wp.media ──
+if (!did_action('wp_enqueue_media')) {
+    wp_enqueue_media();
+}
 
 // ── بناء رابط المتجر ──
 $store_base = get_option('vmp_store_base', 'store');
@@ -46,60 +55,71 @@ if (empty($store_slug)) {
     $store_slug = 'store-' . $vendor->id;
 }
 $store_url = home_url('/' . $store_base . '/' . $store_slug . '/');
+
+// ── nonce موحد للصفحة ──
+$public_nonce = wp_create_nonce('vmp_public_nonce');
 ?>
 
 <div class="vmp-wrap">
     <!-- التنقل -->
-    <?php if (file_exists($nav_file)) include $nav_file; ?>
+    <?php
+    $nav_file = VMP_PLUGIN_DIR . 'public/templates/partials/vendor-nav.php';
+    if (file_exists($nav_file)) {
+        require_once $nav_file;
+    }
+    ?>
 
     <div class="vmp-card" style="max-width: 820px; margin: 0 auto;">
         <div class="vmp-card-header">
-            <h2 class="vmp-card-title"><?php _e('إعدادات المتجر', 'vmp'); ?></h2>
-            <span class="vmp-badge-status vmp-status-approved"><?php _e('نشط', 'vmp'); ?></span>
+            <h2 class="vmp-card-title"><?php echo esc_html__('إعدادات المتجر', 'vmp'); ?></h2>
+            <span class="vmp-badge-status vmp-status-approved"><?php echo esc_html__('نشط', 'vmp'); ?></span>
         </div>
+
+        <!-- ── Toast Notification Container ── -->
+        <div id="vmp-toast-container" style="position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
 
         <!-- ── عرض رابط المتجر الحالي ── -->
         <div class="vmp-store-url-box" style="background: #f8fafc; border: 2px solid #2563eb; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
             <div class="vmp-store-url-label" style="display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 16px; color: #1e293b;">
                 <span class="dashicons dashicons-admin-links" style="font-size: 24px; width: 24px; height: 24px;"></span>
-                <?php _e('رابط متجرك:', 'vmp'); ?>
+                <?php echo esc_html__('رابط متجرك:', 'vmp'); ?>
             </div>
             <div class="vmp-store-url-display" style="flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <input type="text" id="vmp-store-url-input" value="<?php echo esc_url($store_url); ?>" readonly 
                        style="flex: 1; min-width: 200px; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #ffffff; color: #1e293b; direction: ltr; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);">
                 <button class="vmp-btn vmp-btn-sm vmp-copy-url-btn" data-url="<?php echo esc_url($store_url); ?>" 
                         style="display: inline-flex; align-items: center; gap: 4px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; background: #2563eb; color: #ffffff; transition: 0.2s;">
-                    <span class="dashicons dashicons-clipboard" style="font-size: 18px; width: 18px; height: 18px;"></span> <?php _e('نسخ', 'vmp'); ?>
+                    <span class="dashicons dashicons-clipboard" style="font-size: 18px; width: 18px; height: 18px;"></span> <?php echo esc_html__('نسخ', 'vmp'); ?>
                 </button>
             </div>
             <div class="vmp-store-url-hint" style="width: 100%; font-size: 13px; color: #64748b; margin-top: 4px;">
-                <?php _e('استخدم هذا الرابط لمشاركة متجرك مع العملاء.', 'vmp'); ?>
+                <?php echo esc_html__('استخدم هذا الرابط لمشاركة متجرك مع العملاء.', 'vmp'); ?>
             </div>
         </div>
 
-        <form id="vmp-profile-form" class="vmp-profile-form" data-action="vmp_vendor_update_profile">
-            <input type="hidden" name="nonce" value="<?php echo wp_create_nonce('vmp_public_nonce'); ?>">
+        <form id="vmp-profile-form" class="vmp-profile-form" data-action="vmp_vendor_update_profile" enctype="multipart/form-data">
+            <input type="hidden" name="nonce" value="<?php echo esc_attr($public_nonce); ?>">
 
             <!-- قسم: معلومات المتجر الأساسية -->
             <div class="vmp-section-title">
                 <span class="vmp-section-icon">🏪</span>
-                <?php _e('معلومات المتجر', 'vmp'); ?>
+                <?php echo esc_html__('معلومات المتجر', 'vmp'); ?>
             </div>
 
             <div class="vmp-form-row">
                 <div class="vmp-form-group">
-                    <label><?php _e('اسم المتجر', 'vmp'); ?> <span class="required">*</span></label>
+                    <label><?php echo esc_html__('اسم المتجر', 'vmp'); ?> <span class="required">*</span></label>
                     <input type="text" name="store_name" class="vmp-input" value="<?php echo esc_attr($vendor->store_name ?? ''); ?>" required>
                 </div>
                 <div class="vmp-form-group">
-                    <label><?php _e('رقم الهاتف', 'vmp'); ?></label>
+                    <label><?php echo esc_html__('رقم الهاتف', 'vmp'); ?></label>
                     <input type="tel" name="store_phone" class="vmp-input" value="<?php echo esc_attr($vendor->store_phone ?? ''); ?>" dir="ltr" placeholder="+966 500 000 000">
                 </div>
             </div>
 
             <!-- ── رابط المتجر (Slug) ── -->
             <div class="vmp-form-group">
-                <label><?php _e('رابط المتجر (Slug)', 'vmp'); ?> <span class="required">*</span></label>
+                <label><?php echo esc_html__('رابط المتجر (Slug)', 'vmp'); ?> <span class="required">*</span></label>
                 <div style="display:flex; align-items:center; direction:ltr;">
                     <span style="background:var(--vmp-border); padding:11px 14px; border-radius:8px 0 0 8px; font-size:13px; color:var(--vmp-text-muted); border:1.5px solid var(--vmp-border); border-right:none;">
                         <?php echo esc_url(home_url('/' . $store_base . '/')); ?>
@@ -107,50 +127,64 @@ $store_url = home_url('/' . $store_base . '/' . $store_slug . '/');
                     <input type="text" name="store_slug" class="vmp-input" value="<?php echo esc_attr($vendor->store_slug ?? ''); ?>" 
                            required pattern="[a-z0-9\-]+" 
                            style="border-radius:0 8px 8px 0; direction:ltr; flex:1;"
-                           placeholder="<?php _e('your-store-name', 'vmp'); ?>">
+                           placeholder="<?php echo esc_attr__('your-store-name', 'vmp'); ?>">
                 </div>
                 <div class="vmp-input-hint">
-                    <?php _e('أحرف إنجليزية صغيرة، أرقام، وشرطات فقط. مثال: my-store', 'vmp'); ?>
+                    <?php echo esc_html__('أحرف إنجليزية صغيرة، أرقام، وشرطات فقط. مثال: my-store', 'vmp'); ?>
                 </div>
                 <div id="vmp-slug-status" style="margin-top:6px; font-size:13px;"></div>
             </div>
 
             <div class="vmp-form-group">
-                <label><?php _e('وصف المتجر', 'vmp'); ?></label>
+                <label><?php echo esc_html__('وصف المتجر', 'vmp'); ?></label>
                 <textarea name="store_description" class="vmp-textarea" rows="4"><?php echo esc_textarea($vendor->store_description ?? ''); ?></textarea>
-                <div class="vmp-input-hint"><?php _e('نبذة مختصرة تظهر في صفحة متجرك.', 'vmp'); ?></div>
+                <div class="vmp-input-hint"><?php echo esc_html__('نبذة مختصرة تظهر في صفحة متجرك.', 'vmp'); ?></div>
             </div>
 
             <!-- قسم: الميزات الإضافية (حسب الخطة) -->
             <div class="vmp-section-title">
                 <span class="vmp-section-icon">✨</span>
-                <?php _e('ميزات متقدمة', 'vmp'); ?>
-                <span class="vmp-badge-plan"><?php echo $plan ? esc_html($plan->name) : __('مجاني', 'vmp'); ?></span>
+                <?php echo esc_html__('ميزات متقدمة', 'vmp'); ?>
+                <span class="vmp-badge-plan"><?php echo $plan ? esc_html($plan->name) : esc_html__('مجاني', 'vmp'); ?></span>
             </div>
 
             <?php if ($has_address) : ?>
                 <div class="vmp-form-group">
-                    <label><?php _e('عنوان المتجر', 'vmp'); ?></label>
-                    <input type="text" name="store_address" class="vmp-input" value="<?php echo esc_attr($vendor->store_address ?? ''); ?>" placeholder="<?php _e('مثال: صنعاء، شارع التعاون', 'vmp'); ?>">
-                    <div class="vmp-input-hint">📍 <?php _e('سيظهر العنوان مع خريطة في صفحة متجرك.', 'vmp'); ?></div>
+                    <label><?php echo esc_html__('عنوان المتجر', 'vmp'); ?></label>
+                    <input type="text" name="store_address" class="vmp-input" value="<?php echo esc_attr($vendor->store_address ?? ''); ?>" placeholder="<?php echo esc_attr__('مثال: صنعاء، شارع التعاون', 'vmp'); ?>">
+                    <div class="vmp-input-hint">📍 <?php echo esc_html__('سيظهر العنوان مع خريطة في صفحة متجرك.', 'vmp'); ?></div>
                 </div>
                 <div class="vmp-form-row">
                     <div class="vmp-form-group">
-                        <label><?php _e('خط العرض (Latitude)', 'vmp'); ?></label>
+                        <label><?php echo esc_html__('خط العرض (Latitude)', 'vmp'); ?></label>
                         <input type="text" name="store_latitude" class="vmp-input" value="<?php echo esc_attr($vendor->store_latitude ?? ''); ?>" placeholder="15.369445">
                     </div>
                     <div class="vmp-form-group">
-                        <label><?php _e('خط الطول (Longitude)', 'vmp'); ?></label>
+                        <label><?php echo esc_html__('خط الطول (Longitude)', 'vmp'); ?></label>
                         <input type="text" name="store_longitude" class="vmp-input" value="<?php echo esc_attr($vendor->store_longitude ?? ''); ?>" placeholder="44.191027">
                     </div>
                 </div>
             <?php else : ?>
-                <div class="vmp-notice vmp-notice-info"><strong>🔒</strong> <?php _e('ميزة العنوان متاحة في الخطط المدفوعة. قم بترقية خطتك.', 'vmp'); ?></div>
+                <div class="vmp-form-group vmp-field-locked">
+                    <label class="vmp-label-disabled"><?php echo esc_html__('عنوان المتجر', 'vmp'); ?> <span class="vmp-lock-icon" title="<?php echo esc_attr__('ميزة العنوان متاحة في الخطط المدفوعة. قم بترقية خطتك.', 'vmp'); ?>">🔒</span></label>
+                    <input type="text" class="vmp-input" disabled placeholder="<?php echo esc_attr__('مثال: صنعاء، شارع التعاون', 'vmp'); ?>">
+                    <div class="vmp-input-hint vmp-hint-locked">🔒 <?php echo esc_html__('ميزة العنوان متاحة في الخطط المدفوعة. قم بترقية خطتك.', 'vmp'); ?></div>
+                </div>
+                <div class="vmp-form-row vmp-field-locked">
+                    <div class="vmp-form-group">
+                        <label class="vmp-label-disabled"><?php echo esc_html__('خط العرض (Latitude)', 'vmp'); ?> <span class="vmp-lock-icon">🔒</span></label>
+                        <input type="text" class="vmp-input" disabled placeholder="15.369445">
+                    </div>
+                    <div class="vmp-form-group">
+                        <label class="vmp-label-disabled"><?php echo esc_html__('خط الطول (Longitude)', 'vmp'); ?> <span class="vmp-lock-icon">🔒</span></label>
+                        <input type="text" class="vmp-input" disabled placeholder="44.191027">
+                    </div>
+                </div>
             <?php endif; ?>
 
             <?php if ($has_social) : ?>
                 <div class="vmp-form-group">
-                    <label><?php _e('روابط التواصل الاجتماعي', 'vmp'); ?></label>
+                    <label><?php echo esc_html__('روابط التواصل الاجتماعي', 'vmp'); ?></label>
                     <div class="vmp-form-row">
                         <input type="url" name="social_facebook" class="vmp-input" value="<?php echo esc_url($vendor->social_facebook ?? ''); ?>" placeholder="🔵 Facebook">
                         <input type="url" name="social_instagram" class="vmp-input" value="<?php echo esc_url($vendor->social_instagram ?? ''); ?>" placeholder="🟣 Instagram">
@@ -161,62 +195,79 @@ $store_url = home_url('/' . $store_base . '/' . $store_slug . '/');
                     </div>
                 </div>
             <?php else : ?>
-                <div class="vmp-notice vmp-notice-info"><strong>🔒</strong> <?php _e('ميزة روابط التواصل متاحة في الخطط المدفوعة.', 'vmp'); ?></div>
+                <div class="vmp-form-group vmp-field-locked">
+                    <label class="vmp-label-disabled"><?php echo esc_html__('روابط التواصل الاجتماعي', 'vmp'); ?> <span class="vmp-lock-icon" title="<?php echo esc_attr__('ميزة روابط التواصل متاحة في الخطط المدفوعة.', 'vmp'); ?>">🔒</span></label>
+                    <div class="vmp-form-row">
+                        <input type="url" class="vmp-input" disabled placeholder="🔵 Facebook">
+                        <input type="url" class="vmp-input" disabled placeholder="🟣 Instagram">
+                    </div>
+                    <div class="vmp-form-row" style="margin-top:10px;">
+                        <input type="url" class="vmp-input" disabled placeholder="🐦 Twitter">
+                        <input type="url" class="vmp-input" disabled placeholder="▶️ YouTube">
+                    </div>
+                    <div class="vmp-input-hint vmp-hint-locked">🔒 <?php echo esc_html__('ميزة روابط التواصل متاحة في الخطط المدفوعة.', 'vmp'); ?></div>
+                </div>
             <?php endif; ?>
 
             <?php if ($has_video) : ?>
                 <div class="vmp-form-group">
-                    <label><?php _e('فيديو تعريفي', 'vmp'); ?></label>
+                    <label><?php echo esc_html__('فيديو تعريفي', 'vmp'); ?></label>
                     <input type="url" name="store_video" class="vmp-input" value="<?php echo esc_url($vendor->store_video ?? ''); ?>" placeholder="https://www.youtube.com/watch?v=...">
-                    <div class="vmp-input-hint">🎬 <?php _e('رابط YouTube أو Vimeo سيظهر في متجرك.', 'vmp'); ?></div>
+                    <div class="vmp-input-hint">🎬 <?php echo esc_html__('رابط YouTube أو Vimeo سيظهر في متجرك.', 'vmp'); ?></div>
                 </div>
             <?php else : ?>
-                <div class="vmp-notice vmp-notice-info"><strong>🔒</strong> <?php _e('ميزة الفيديو متاحة في الخطط المدفوعة.', 'vmp'); ?></div>
+                <div class="vmp-form-group vmp-field-locked">
+                    <label class="vmp-label-disabled"><?php echo esc_html__('فيديو تعريفي', 'vmp'); ?> <span class="vmp-lock-icon" title="<?php echo esc_attr__('ميزة الفيديو متاحة في الخطط المدفوعة.', 'vmp'); ?>">🔒</span></label>
+                    <input type="url" class="vmp-input" disabled placeholder="https://www.youtube.com/watch?v=...">
+                    <div class="vmp-input-hint vmp-hint-locked">🔒 <?php echo esc_html__('ميزة الفيديو متاحة في الخطط المدفوعة.', 'vmp'); ?></div>
+                </div>
             <?php endif; ?>
 
             <!-- قسم: واتساب -->
             <div class="vmp-section-title">
                 <span class="vmp-section-icon">💬</span>
-                <?php _e('إعدادات واتساب', 'vmp'); ?>
+                <?php echo esc_html__('إعدادات واتساب', 'vmp'); ?>
             </div>
 
             <div class="vmp-form-group">
-                <label><?php _e('رقم واتساب', 'vmp'); ?></label>
+                <label><?php echo esc_html__('رقم واتساب', 'vmp'); ?></label>
                 <input type="tel" name="whatsapp_number" class="vmp-input" value="<?php echo esc_attr($vendor->whatsapp_number ?? ''); ?>" dir="ltr" placeholder="+966500000000">
-                <div class="vmp-input-hint">💬 <?php _e('سيظهر زر "طلب عبر واتساب" في صفحة متجرك ومنتجاتك.', 'vmp'); ?></div>
+                <div class="vmp-input-hint">💬 <?php echo esc_html__('سيظهر زر "طلب عبر واتساب" في صفحة متجرك ومنتجاتك.', 'vmp'); ?></div>
             </div>
 
             <!-- قسم: الصور -->
             <div class="vmp-section-title">
                 <span class="vmp-section-icon">🖼️</span>
-                <?php _e('صور المتجر', 'vmp'); ?>
+                <?php echo esc_html__('صور المتجر', 'vmp'); ?>
             </div>
 
             <div class="vmp-form-row">
                 <div class="vmp-form-group">
-                    <label><?php _e('شعار المتجر', 'vmp'); ?></label>
-                    <div class="vmp-image-upload">
+                    <label><?php echo esc_html__('شعار المتجر', 'vmp'); ?></label>
+                    <div class="vmp-image-upload" data-type="logo">
                         <input type="hidden" name="store_logo" value="<?php echo esc_attr($vendor->store_logo ?? 0); ?>">
                         <?php if (!empty($logo_url)) : ?>
-                            <img src="<?php echo esc_url($logo_url); ?>" class="vmp-image-preview show" alt="Logo">
+                            <img src="<?php echo esc_url($logo_url); ?>" class="vmp-image-preview show" alt="<?php echo esc_attr__('شعار المتجر', 'vmp'); ?>">
                         <?php else : ?>
-                            <img src="" class="vmp-image-preview" alt="Logo">
+                            <img src="" class="vmp-image-preview" alt="<?php echo esc_attr__('شعار المتجر', 'vmp'); ?>">
                         <?php endif; ?>
                         <div class="upload-icon" style="<?php echo !empty($logo_url) ? 'display:none;' : ''; ?>">📸</div>
-                        <p style="<?php echo !empty($logo_url) ? 'display:none;' : ''; ?>"><?php _e('انقر لاختيار صورة', 'vmp'); ?></p>
+                        <p style="<?php echo !empty($logo_url) ? 'display:none;' : ''; ?>"><?php echo esc_html__('انقر لاختيار صورة', 'vmp'); ?></p>
+                        <button type="button" class="vmp-remove-image" style="<?php echo empty($logo_url) ? 'display:none;' : ''; ?>" title="<?php echo esc_attr__('إزالة الصورة', 'vmp'); ?>">✕</button>
                     </div>
                 </div>
                 <div class="vmp-form-group">
-                    <label><?php _e('غلاف المتجر', 'vmp'); ?></label>
-                    <div class="vmp-image-upload">
+                    <label><?php echo esc_html__('غلاف المتجر', 'vmp'); ?></label>
+                    <div class="vmp-image-upload" data-type="banner">
                         <input type="hidden" name="store_banner" value="<?php echo esc_attr($vendor->store_banner ?? 0); ?>">
                         <?php if (!empty($banner_url)) : ?>
-                            <img src="<?php echo esc_url($banner_url); ?>" class="vmp-image-preview show" alt="Banner">
+                            <img src="<?php echo esc_url($banner_url); ?>" class="vmp-image-preview show" alt="<?php echo esc_attr__('غلاف المتجر', 'vmp'); ?>">
                         <?php else : ?>
-                            <img src="" class="vmp-image-preview" alt="Banner">
+                            <img src="" class="vmp-image-preview" alt="<?php echo esc_attr__('غلاف المتجر', 'vmp'); ?>">
                         <?php endif; ?>
                         <div class="upload-icon" style="<?php echo !empty($banner_url) ? 'display:none;' : ''; ?>">🖼️</div>
-                        <p style="<?php echo !empty($banner_url) ? 'display:none;' : ''; ?>"><?php _e('انقر لاختيار غلاف (يفضل 1200x400)', 'vmp'); ?></p>
+                        <p style="<?php echo !empty($banner_url) ? 'display:none;' : ''; ?>"><?php echo esc_html__('انقر لاختيار غلاف (يفضل 1200x400)', 'vmp'); ?></p>
+                        <button type="button" class="vmp-remove-image" style="<?php echo empty($banner_url) ? 'display:none;' : ''; ?>" title="<?php echo esc_attr__('إزالة الصورة', 'vmp'); ?>">✕</button>
                     </div>
                 </div>
             </div>
@@ -224,29 +275,36 @@ $store_url = home_url('/' . $store_base . '/' . $store_slug . '/');
             <!-- قسم: الحساب -->
             <div class="vmp-section-title">
                 <span class="vmp-section-icon">👤</span>
-                <?php _e('بيانات الحساب', 'vmp'); ?>
+                <?php echo esc_html__('بيانات الحساب', 'vmp'); ?>
             </div>
 
             <div class="vmp-form-row">
                 <div class="vmp-form-group">
-                    <label><?php _e('الاسم الأول', 'vmp'); ?> <span class="required">*</span></label>
+                    <label><?php echo esc_html__('الاسم الأول', 'vmp'); ?> <span class="required">*</span></label>
                     <input type="text" name="first_name" class="vmp-input" value="<?php echo esc_attr($user->first_name ?? ''); ?>" required>
                 </div>
                 <div class="vmp-form-group">
-                    <label><?php _e('الاسم الأخير', 'vmp'); ?> <span class="required">*</span></label>
+                    <label><?php echo esc_html__('الاسم الأخير', 'vmp'); ?> <span class="required">*</span></label>
                     <input type="text" name="last_name" class="vmp-input" value="<?php echo esc_attr($user->last_name ?? ''); ?>" required>
                 </div>
             </div>
 
             <div class="vmp-form-group">
-                <label><?php _e('البريد الإلكتروني', 'vmp'); ?> <span class="required">*</span></label>
+                <label><?php echo esc_html__('البريد الإلكتروني', 'vmp'); ?> <span class="required">*</span></label>
                 <input type="email" name="store_email" class="vmp-input" value="<?php echo esc_attr($user->user_email ?? ''); ?>" required>
             </div>
 
-            <div class="vmp-form-group">
-                <label><?php _e('كلمة المرور الجديدة', 'vmp'); ?></label>
-                <input type="password" name="password" class="vmp-input" placeholder="••••••••">
-                <div class="vmp-input-hint">🔑 <?php _e('اتركه فارغاً إذا لم ترغب في التغيير.', 'vmp'); ?></div>
+            <div class="vmp-form-row">
+                <div class="vmp-form-group">
+                    <label><?php echo esc_html__('كلمة المرور الجديدة', 'vmp'); ?></label>
+                    <input type="password" name="password" class="vmp-input" placeholder="••••••••" autocomplete="new-password">
+                    <div class="vmp-input-hint">🔑 <?php echo esc_html__('اتركه فارغاً إذا لم ترغب في التغيير.', 'vmp'); ?></div>
+                </div>
+                <div class="vmp-form-group">
+                    <label><?php echo esc_html__('تأكيد كلمة المرور', 'vmp'); ?></label>
+                    <input type="password" name="confirm_password" class="vmp-input" placeholder="••••••••" autocomplete="new-password">
+                    <div class="vmp-input-hint">🔑 <?php echo esc_html__('أعد كتابة كلمة المرور للتأكيد.', 'vmp'); ?></div>
+                </div>
             </div>
 
             <div style="margin-top:30px;">
@@ -254,7 +312,7 @@ $store_url = home_url('/' . $store_base . '/' . $store_slug . '/');
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <?php _e('حفظ التعديلات', 'vmp'); ?>
+                    <?php echo esc_html__('حفظ التعديلات', 'vmp'); ?>
                 </button>
             </div>
         </form>
@@ -263,210 +321,6 @@ $store_url = home_url('/' . $store_base . '/' . $store_slug . '/');
 
 <div class="vmp-loading"><div class="vmp-spinner"></div></div>
 
-<style>
-.vmp-section-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--vmp-text);
-    margin: 28px 0 18px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--vmp-border);
-}
-.vmp-section-icon { font-size: 20px; }
-.vmp-badge-plan {
-    margin-right: auto;
-    background: var(--vmp-primary-light);
-    color: var(--vmp-primary);
-    padding: 2px 14px;
-    border-radius: 9999px;
-    font-size: 12px;
-    font-weight: 600;
-}
-.vmp-notice-info strong { font-size: 14px; }
-.vmp-image-upload {
-    border: 2px dashed var(--vmp-border);
-    border-radius: var(--vmp-radius);
-    padding: 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all var(--vmp-transition);
-    position: relative;
-}
-.vmp-image-upload:hover {
-    border-color: var(--vmp-primary);
-    background: var(--vmp-primary-light);
-}
-.vmp-image-upload .upload-icon { font-size: 36px; margin-bottom: 10px; }
-.vmp-image-upload p { color: var(--vmp-text-muted); font-size: 13px; margin: 0; }
-.vmp-image-preview {
-    width: 100%;
-    max-height: 200px;
-    object-fit: cover;
-    border-radius: var(--vmp-radius-sm);
-    display: none;
-}
-.vmp-image-preview.show { display: block; }
-</style>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // ── نسخ الرابط ──
-    const copyBtn = document.querySelector('.vmp-copy-url-btn');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', function() {
-            const url = this.dataset.url;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(url).then(() => {
-                    alert('<?php _e('تم نسخ رابط المتجر!', 'vmp'); ?>');
-                }).catch(() => {
-                    fallbackCopy(url);
-                });
-            } else {
-                fallbackCopy(url);
-            }
-        });
-    }
 
-    function fallbackCopy(text) {
-        const input = document.createElement('input');
-        input.value = text;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        document.body.removeChild(input);
-        alert('<?php _e('تم نسخ رابط المتجر!', 'vmp'); ?>');
-    }
 
-    // ── التحقق من تفرد الـ Slug ──
-    const slugInput = document.querySelector('input[name="store_slug"]');
-    const slugStatus = document.getElementById('vmp-slug-status');
-    
-    if (slugInput && slugStatus) {
-        let timeoutId;
-        slugInput.addEventListener('input', function() {
-            const slug = this.value.trim();
-            if (!slug) {
-                slugStatus.innerHTML = '';
-                return;
-            }
-            
-            // التحقق من الصيغة
-            if (!/^[a-z0-9\-]+$/.test(slug)) {
-                slugStatus.innerHTML = '⚠️ <?php _e('أحرف إنجليزية صغيرة، أرقام، وشرطات فقط.', 'vmp'); ?>';
-                slugStatus.style.color = '#f59e0b';
-                return;
-            }
-            
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(function() {
-                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: new URLSearchParams({
-                        action: 'vmp_check_store_slug',
-                        nonce: '<?php echo wp_create_nonce('vmp_vendor_check_slug'); ?>',
-                        slug: slug,
-                        exclude_user_id: <?php echo (int) $user_id; ?>
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success && data.data.available) {
-                        slugStatus.innerHTML = '✅ <?php _e('الرابط متاح', 'vmp'); ?>';
-                        slugStatus.style.color = '#10b981';
-                    } else {
-                        slugStatus.innerHTML = '❌ <?php _e('الرابط مستخدم مسبقاً', 'vmp'); ?>';
-                        slugStatus.style.color = '#ef4444';
-                    }
-                })
-                .catch(() => {
-                    slugStatus.innerHTML = '⚠️ <?php _e('تعذر التحقق', 'vmp'); ?>';
-                    slugStatus.style.color = '#f59e0b';
-                });
-            }, 500);
-        });
-    }
-
-    // ── رفع الصور (Media Uploader) ──
-    document.querySelectorAll('.vmp-image-upload').forEach(function(container) {
-        const input = container.querySelector('input[type="hidden"]');
-        const preview = container.querySelector('.vmp-image-preview');
-        const icon = container.querySelector('.upload-icon');
-        const text = container.querySelector('p');
-
-        container.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const frame = wp.media({
-                title: '<?php _e('اختر صورة', 'vmp'); ?>',
-                library: { type: 'image' },
-                multiple: false
-            });
-
-            frame.on('select', function() {
-                const attachment = frame.state().get('selection').first().toJSON();
-                input.value = attachment.id;
-                preview.src = attachment.url;
-                preview.classList.add('show');
-                if (icon) icon.style.display = 'none';
-                if (text) text.style.display = 'none';
-            });
-
-            frame.open();
-        });
-    });
-
-    // ── إرسال النموذج عبر AJAX ──
-    const form = document.getElementById('vmp-profile-form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const submitBtn = this.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<?php _e('جاري الحفظ...', 'vmp'); ?>';
-
-            const formData = new FormData(this);
-            formData.append('action', this.dataset.action || 'vmp_vendor_update_profile');
-
-            fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-                method: 'POST',
-                body: new URLSearchParams(formData)
-            })
-            .then(res => res.json())
-            .then(data => {
-                const payload = data.data || {};
-                if (data.success) {
-                    alert(payload.message || data.message || '<?php _e('تم حفظ التغييرات بنجاح.', 'vmp'); ?>');
-                    // تحديث الرابط المعروض إذا تغير الـ slug
-                    if (payload.store_slug) {
-                        const urlInput = document.getElementById('vmp-store-url-input');
-                        if (urlInput) {
-                            const base = '<?php echo esc_url(home_url('/' . $store_base . '/')); ?>';
-                            urlInput.value = base + payload.store_slug + '/';
-                        }
-                    }
-                    // تحديث زر النسخ بالرابط الجديد
-                    const copyBtn = document.querySelector('.vmp-copy-url-btn');
-                    if (copyBtn && payload.store_slug) {
-                        const base = '<?php echo esc_url(home_url('/' . $store_base . '/')); ?>';
-                        copyBtn.dataset.url = base + payload.store_slug + '/';
-                    }
-                } else {
-                    alert(payload.message || data.message || '<?php _e('حدث خطأ أثناء الحفظ.', 'vmp'); ?>');
-                }
-            })
-            .catch(() => {
-                alert('<?php _e('خطأ في الاتصال بالخادم.', 'vmp'); ?>');
-            })
-            .finally(() => {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<?php _e('حفظ التعديلات', 'vmp'); ?>';
-            });
-        });
-    }
-});
-</script>

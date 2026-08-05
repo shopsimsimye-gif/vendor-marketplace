@@ -298,6 +298,48 @@ class VendorRequestRepository implements VendorRequestRepositoryInterface
             // إطلاق حدث الموافقة
             do_action('vmp_vendor_request_approved', $vendor_id, $id, $admin_id, $request);
 
+            // ── 5. ضمان سجل الاشتراك الافتراضي (الخطة المجانية) إن لم يوجد اشتراك نشط ──
+            $has_active_sub = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM {$wpdb->prefix}vmp_vendor_subscriptions
+                 WHERE vendor_id = %d AND status = 'active' LIMIT 1",
+                $vendor_id
+            ));
+            if (!$has_active_sub) {
+                $sub_plans_table = $wpdb->prefix . 'vmp_subscription_plans';
+                // الخطة المجانية = نشطة وبسعر 0 (الأولوية)، وإلا أول خطة نشطة
+                $free_plan = $wpdb->get_row(
+                    "SELECT * FROM {$sub_plans_table}
+                     WHERE is_active = 1
+                     ORDER BY (price = 0) DESC, price ASC, id ASC
+                     LIMIT 1"
+                );
+                if ($free_plan) {
+                    $wpdb->insert($wpdb->prefix . 'vmp_vendor_subscriptions', [
+                        'vendor_id'        => $vendor_id,
+                        'plan_id'          => (int) $free_plan->id,
+                        'status'           => 'active',
+                        'amount'           => 0,
+                        'billing_period'   => $free_plan->billing_period,
+                        'billing_interval' => (int) $free_plan->billing_interval,
+                        'start_date'       => current_time('mysql'),
+                        'end_date'         => date('Y-m-d H:i:s', strtotime('+10 years')),
+                        'created_at'       => current_time('mysql'),
+                    ]);
+                }
+            }
+
+            // ── 6. إطلاق حدث الموافقة الحي (Notification + Subscription modules) ──
+            // السبب: do_action('vmp_vendor_request_approved') ليس له مستمعون؛ الـ modules
+            // الحية تستمع على 'vmp_vendor_approved' عبر EventManager. هذا يفعّل بريد
+            // التهاني + إشعار لوحة البائع (Notification::on_vendor_approved).
+            // Subscription::on_vendor_approved سيتخطى لأن اشتراكاً نشطاً أُنشئ أعلاه.
+            try {
+                \VMP\Core\Container::getInstance()->make('event_manager')
+                    ->trigger('vmp_vendor_approved', $vendor_id);
+            } catch (\Throwable $e) {
+                error_log('[VMP] vmp_vendor_approved trigger failed: ' . $e->getMessage());
+            }
+
             return $vendor_id;
 
         } catch (\Exception $e) {
@@ -325,8 +367,25 @@ class VendorRequestRepository implements VendorRequestRepositoryInterface
         ]);
 
         if ($result) {
-            // إطلاق حدث الرفض
+            // إطلاق حدث الرفض (القديم بلا مستمعين)
             do_action('vmp_vendor_request_rejected', $id, $admin_id, $reason, $request);
+
+            // ── إشعار الرفض الحي ──
+            // Notification::on_vendor_rejected يستمع على 'vmp_vendor_rejected' عبر
+            // EventManager ويتطلب سجل بائع موجود. نسترجعه من request->user_id؛
+            // إن وُجد بائع نطلق الحدث (إشعار/بريد الرفض)، وإلا نتجاهل بأمان.
+            $vendor_id = $this->db->get_var($this->db->prepare(
+                "SELECT id FROM {$this->db->prefix}vmp_vendors WHERE user_id = %d LIMIT 1",
+                $request->user_id
+            ));
+            if ($vendor_id) {
+                try {
+                    \VMP\Core\Container::getInstance()->make('event_manager')
+                        ->trigger('vmp_vendor_rejected', (int) $vendor_id, $reason);
+                } catch (\Throwable $e) {
+                    error_log('[VMP] vmp_vendor_rejected trigger failed: ' . $e->getMessage());
+                }
+            }
         }
 
         return $result;

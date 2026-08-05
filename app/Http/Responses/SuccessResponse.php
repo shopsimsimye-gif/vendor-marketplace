@@ -1,15 +1,15 @@
 <?php
+/**
+ * SuccessResponse — استجابة نجاح
+ *
+ * @package VMP\Http\Responses
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\Responses;
 
 defined('ABSPATH') || exit;
 
-/**
- * Class SuccessResponse
- *
- * Description of administrative platform component SuccessResponse.
- *
- * @package vendor-marketplace
- */
 class SuccessResponse extends ApiResponse
 {
     public function __construct(
@@ -21,16 +21,9 @@ class SuccessResponse extends ApiResponse
         parent::__construct($statusCode, $headers);
     }
 
-    /**
-     * ToArray functionality helper.
-     *
-     * @return array Output payload.
-     */
     public function toArray(): array
     {
-        $response = [
-            'success' => true,
-        ];
+        $response = ['success' => true];
 
         if ($this->message !== '') {
             $response['message'] = $this->message;

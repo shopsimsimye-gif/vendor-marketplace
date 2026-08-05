@@ -189,6 +189,11 @@
         },
 
         initMediaUploader: function () {
+            // صفحة الملف الشخصي لها معالجها الخاص (vendor-profile.js) —
+            // تجنب فتح نافذتين من مكتبة الوسائط عند النقر.
+            if (document.getElementById('vmp-profile-form')) {
+                return;
+            }
             $(document).on('click', '.vmp-image-upload', function (e) {
                 e.preventDefault();
                 const $container = $(this);

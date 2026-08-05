@@ -9,12 +9,20 @@ use VMP\Contracts\VendorRepositoryInterface;
 /**
  * Class UpdateVendorRequest
  *
- * Description of administrative platform component UpdateVendorRequest.
- *
  * @package vendor-marketplace
  */
 class UpdateVendorRequest extends AbstractRequest
 {
+    /**
+     * Authorize functionality helper.
+     *
+     * @return bool Output payload.
+     */
+    public function authorize(): bool
+    {
+        return current_user_can('vmp_vendor');
+    }
+
     /**
      * Rules functionality helper.
      *
@@ -23,9 +31,9 @@ class UpdateVendorRequest extends AbstractRequest
     protected function rules(): array
     {
         return [
-            'store_name' => ['string', 'min:3', 'max:100'],
-            'store_slug' => ['string'],
-            'phone'      => ['string', 'phone'],
+            'store_name' => ['nullable', 'string', 'min:3', 'max:100', 'regex:/^[\p{L}\s\-0-9]+$/u'],
+            'store_slug' => ['nullable', 'string', 'min:3', 'max:60', 'regex:/^[a-z0-9\-]+$/'],
+            'phone'      => ['nullable', 'string', 'regex:/^\+?[0-9]{7,15}$/'],
         ];
     }
 
@@ -54,39 +62,26 @@ class UpdateVendorRequest extends AbstractRequest
             return false;
         }
 
-        $errors = [];
-
-        $storeName = $this->string('store_name');
-        if ($storeName && !preg_match('/^[\p{L}\s\-0-9]+$/u', $storeName)) {
-            $errors[] = __('اسم المتجر يحتوي على أحرف غير مسموحة.', 'vmp');
+        $slug = $this->input('store_slug');
+        if (empty($slug)) {
+            return true;
         }
 
-        $slug = $this->string('store_slug');
-        if ($slug && !preg_match('/^[a-z0-9\-]+$/', $slug)) {
-            $errors[] = __('الرابط المختصر (slug) يجب أن يحتوي على أحرف وأرقام وشرطات فقط.', 'vmp');
+        $vendorId = (int) get_user_meta(get_current_user_id(), 'vmp_vendor_id', true);
+        if ($vendorId <= 0) {
+            $this->addError(__('لم يتم العثور على حساب البائع.', 'vmp'));
+            return false;
         }
 
-        if ($slug) {
-            $vendor_id = (int) get_user_meta(get_current_user_id(), 'vmp_vendor_id', true);
-            if ($vendor_id) {
-                /** @var VendorRepositoryInterface $vendorRepo */
-                $vendorRepo = Container::getInstance()->make(VendorRepositoryInterface::class);
-                if ($vendorRepo) {
-                    $existing = $vendorRepo->findBySlug($slug);
-                    if ($existing && (int) $existing->id !== $vendor_id) {
-                        $errors[] = __('الرابط المختصر مستخدم مسبقاً من قبل بائع آخر.', 'vmp');
-                    }
-                }
-            }
+        /** @var VendorRepositoryInterface $vendorRepo */
+        $vendorRepo = Container::getInstance()->make(VendorRepositoryInterface::class);
+        if (!$vendorRepo) {
+            return true; // لا يمكن التحقق — نسمح بالمرور
         }
 
-        if (!empty($errors)) {
-            $reflection = new \ReflectionClass(parent::class);
-            $property = $reflection->getProperty('errors');
-            $property->setAccessible(true);
-            $existingErrors = $property->getValue($this);
-            $property->setValue($this, array_merge($existingErrors, $errors));
-            
+        $existing = $vendorRepo->findBySlug($slug);
+        if ($existing && (int) $existing->id !== $vendorId) {
+            $this->addError(__('الرابط المختصر مستخدم مسبقاً من قبل بائع آخر.', 'vmp'));
             return false;
         }
 

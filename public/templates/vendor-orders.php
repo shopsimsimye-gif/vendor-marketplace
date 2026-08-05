@@ -135,65 +135,6 @@ $nav_file = VMP_PLUGIN_DIR . 'public/templates/partials/vendor-nav.php';
     </div>
 </div>
 
-<script>
-jQuery(document).ready(function($) {
-    // فتح الـ Modal عند النقر على زر التفاصيل
-    $(document).on('click', '.vmp-order-details-btn', function(e) {
-        e.preventDefault();
-        var vendorOrderId = $(this).data('vendor-order-id');
-        var orderNumber = $(this).data('order-number');
-        var $modal = $('#vmp-order-modal');
-        $('#vmp-order-modal-id').text('#' + orderNumber);
-        $('#vmp-order-modal-body').html('<p>' + '<?php echo esc_js(__('جاري تحميل التفاصيل...', 'vmp')); ?>' + '</p>');
-        $modal.prop('hidden', false);
 
-        $.post(vmp_public.ajax_url, {
-            action: 'vmp_get_order_details',
-            nonce: vmp_public.nonce,
-            vendor_order_id: vendorOrderId
-        }, function(response) {
-            if (response.success && response.data) {
-                var d = response.data;
-                var html = '';
-                var v = d.vendor_order || {};
-                html += '<p><strong><?php echo esc_js(__('رقم الطلب:', 'vmp')); ?></strong> ' + (d.order_number || v.order_id || '') + '</p>';
-                if (d.customer_name) {
-                    html += '<p><strong><?php echo esc_js(__('العميل:', 'vmp')); ?></strong> ' + d.customer_name + '</p>';
-                }
-                if (d.customer_email) {
-                    html += '<p><strong><?php echo esc_js(__('البريد:', 'vmp')); ?></strong> ' + d.customer_email + '</p>';
-                }
-                if (d.order_date) {
-                    html += '<p><strong><?php echo esc_js(__('التاريخ:', 'vmp')); ?></strong> ' + d.order_date + '</p>';
-                }
-                if (v.total) {
-                    html += '<p class="vmp-order-modal-total"><strong><?php echo esc_js(__('الإجمالي:', 'vmp')); ?> ' + v.total + '</strong></p>';
-                }
-                $('#vmp-order-modal-body').html(html || '<p><?php echo esc_js(__('لا توجد تفاصيل إضافية.', 'vmp')); ?></p>');
-            } else {
-                $('#vmp-order-modal-body').html('<p>' + (response.data && response.data.message ? response.data.message : '<?php echo esc_js(__('تعذر تحميل التفاصيل.', 'vmp')); ?>') + '</p>');
-            }
-        }).fail(function() {
-            $('#vmp-order-modal-body').html('<p><?php echo esc_js(__('حدث خطأ أثناء تحميل التفاصيل.', 'vmp')); ?></p>');
-        });
-    });
 
-    // إغلاق الـ Modal
-    $(document).on('click', '[data-close-modal]', function() {
-        $('#vmp-order-modal').prop('hidden', true);
-    });
-});
-</script>
 
-<style>
-.vmp-modal { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; }
-.vmp-modal[hidden] { display: none; }
-.vmp-modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }
-.vmp-modal-content { position: relative; background: #fff; border-radius: 12px; max-width: 520px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
-.vmp-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--vmp-border, #e2e8f0); }
-.vmp-modal-header h3 { margin: 0; font-size: 16px; }
-.vmp-modal-close { background: none; border: none; font-size: 24px; line-height: 1; cursor: pointer; color: #64748b; }
-.vmp-modal-body { padding: 20px; }
-.vmp-order-modal-items { margin: 0 0 12px; padding: 0; list-style: none; }
-.vmp-order-modal-items li { padding: 8px 0; border-bottom: 1px solid var(--vmp-border, #e2e8f0); }
-</style>

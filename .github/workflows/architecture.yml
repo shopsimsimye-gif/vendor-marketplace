@@ -1,0 +1,21 @@
+name: Architecture Guard
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+
+jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Run Architecture Test
+        run: php scripts/architecture-test.php --root="$GITHUB_WORKSPACE"

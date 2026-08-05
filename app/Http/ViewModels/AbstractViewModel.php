@@ -1,14 +1,15 @@
 <?php
+/**
+ * AbstractViewModel — الكلاس الأساسي المجرد
+ *
+ * @package VMP\Http\ViewModels
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\ViewModels;
 
 defined('ABSPATH') || exit;
 
-/**
- * ViewModel الأساسي المجرد
- *
- * يوفر طريقة موحدة لتمرير البيانات إلى القوالب
- * مع ضمان تنظيف المخرجات وتجنب الوصول المباشر لكائنات الـ DTO
- */
 abstract class AbstractViewModel
 {
     /**
@@ -17,7 +18,7 @@ abstract class AbstractViewModel
     abstract public function toArray(): array;
 
     /**
-     * تمرير المصفوفة إلى نطاق القالب عبر extract()
+     * تمرير المصفوفة إلى نطاق القالب
      */
     public function toViewData(): array
     {
@@ -50,12 +51,15 @@ abstract class AbstractViewModel
 
     /**
      * تنسيق المبلغ المالي
+     *
+     * @param float $amount
+     * @return string HTML (يُستخدم في القوالب فقط)
      */
     protected function money(float $amount): string
     {
         if (function_exists('wc_price')) {
             return wc_price($amount);
         }
-        return number_format($amount, 2) . ' SAR';
+        return number_format($amount, 2) . ' ' . get_woocommerce_currency();
     }
 }

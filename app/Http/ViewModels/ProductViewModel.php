@@ -1,13 +1,17 @@
 <?php
+/**
+ * ProductViewModel — يُحضّر بيانات المنتج للعرض في القوالب
+ *
+ * @package VMP\Http\ViewModels
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\ViewModels;
 
 defined('ABSPATH') || exit;
 
 use VMP\DTO\ProductDTO;
 
-/**
- * ProductViewModel — يُحضّر بيانات المنتج للعرض في القوالب
- */
 class ProductViewModel extends AbstractViewModel
 {
     public function __construct(
@@ -15,139 +19,184 @@ class ProductViewModel extends AbstractViewModel
     ) {}
 
     /**
-     * ToArray functionality helper.
-     *
-     * @return array Output payload.
+     * تحويل البيانات إلى array جاهز للعرض
      */
     public function toArray(): array
     {
+        $productId = (int) ($this->product->productId ?? $this->product->id ?? 0);
+
         return [
-            'id'                => $this->product->id,
-            'product_id'        => $this->product->productId,
-            'vendor_id'         => $this->product->vendorId,
-            'title'             => $this->e($this->product->title),
-            'description'       => wp_kses_post($this->product->description),
-            'short_description' => wp_kses_post($this->product->shortDescription),
-            'regular_price'     => $this->money($this->product->regularPrice),
-            'regular_price_raw' => $this->product->regularPrice,
-            'sale_price'        => $this->product->salePrice > 0 ? $this->money($this->product->salePrice) : '',
-            'sale_price_raw'    => $this->product->salePrice,
+            'id'                => (int) ($this->product->id ?? 0),
+            'product_id'        => $productId,
+            'vendor_id'         => (int) ($this->product->vendorId ?? 0),
+            'title'             => $this->e((string) ($this->product->title ?? '')),
+            'description'       => wp_kses_post((string) ($this->product->description ?? '')),
+            'short_description' => wp_kses_post((string) ($this->product->shortDescription ?? '')),
+            'regular_price'     => $this->money((float) ($this->product->regularPrice ?? 0)),
+            'regular_price_raw' => (float) ($this->product->regularPrice ?? 0),
+            'sale_price'        => $this->getSalePriceFormatted(),
+            'sale_price_raw'    => (float) ($this->product->salePrice ?? 0),
             'effective_price'   => $this->money($this->getEffectivePrice()),
-            'sku'               => $this->e($this->product->sku),
-            'stock_status'      => $this->product->stockStatus,
+            'sku'               => $this->e((string) ($this->product->sku ?? '')),
+            'stock_status'      => (string) ($this->product->stockStatus ?? 'instock'),
             'stock_status_label'=> $this->getStockLabel(),
-            'stock_quantity'    => $this->product->stockQuantity,
-            'status'            => $this->product->status,
+            'stock_quantity'    => (int) ($this->product->stockQuantity ?? 0),
+            'status'            => (string) ($this->product->status ?? 'pending'),
             'status_label'      => $this->getStatusLabel(),
             'status_class'      => $this->getStatusClass(),
             'image_url'         => $this->getImageUrl(),
             'gallery_urls'      => $this->getGalleryUrls(),
-            'edit_url'          => $this->url(home_url('/vendor-dashboard/?vmp_page=edit-product&id=' . $this->product->productId)),
-            'admin_url'         => $this->url(admin_url('post.php?post=' . $this->product->productId . '&action=edit')),
-            'created_at'        => $this->formatDate($this->product->createdAt),
+            'edit_url'          => $this->url($this->getEditUrl($productId)),
+            'admin_url'         => $this->url(admin_url('post.php?post=' . $productId . '&action=edit')),
+            'created_at'        => $this->formatDate($this->product->createdAt ?? null),
         ];
     }
 
     /**
-     * GetEffectivePrice functionality helper.
-     *
-     * @return float Output payload.
+     * السعر الفعّال (التخفيض أو العادي)
      */
     private function getEffectivePrice(): float
     {
-        return $this->product->salePrice > 0
-            ? $this->product->salePrice
-            : $this->product->regularPrice;
+        $salePrice = (float) ($this->product->salePrice ?? 0);
+        $regularPrice = (float) ($this->product->regularPrice ?? 0);
+
+        return $salePrice > 0 ? $salePrice : $regularPrice;
     }
 
     /**
-     * GetStatusLabel functionality helper.
-     *
-     * @return string Output payload.
+     * تنسيق سعر التخفيض (فارغ إذا لا يوجد)
+     */
+    private function getSalePriceFormatted(): string
+    {
+        $salePrice = (float) ($this->product->salePrice ?? 0);
+        return $salePrice > 0 ? $this->money($salePrice) : '';
+    }
+
+    /**
+     * تسمية حالة المنتج
      */
     private function getStatusLabel(): string
     {
+        $status = (string) ($this->product->status ?? 'pending');
+
         $labels = [
             'pending'  => __('قيد المراجعة', 'vmp'),
             'approved' => __('منشور', 'vmp'),
             'rejected' => __('مرفوض', 'vmp'),
             'draft'    => __('مسودة', 'vmp'),
+            'trash'    => __('محذوف', 'vmp'),
         ];
-        return $labels[$this->product->status] ?? $this->product->status;
+
+        return $labels[$status] ?? $status;
     }
 
     /**
-     * GetStatusClass functionality helper.
-     *
-     * @return string Output payload.
+     * CSS class لحالة المنتج
      */
     private function getStatusClass(): string
     {
+        $status = (string) ($this->product->status ?? 'pending');
+
         $classes = [
             'pending'  => 'vmp-badge--warning',
             'approved' => 'vmp-badge--success',
             'rejected' => 'vmp-badge--danger',
             'draft'    => 'vmp-badge--secondary',
+            'trash'    => 'vmp-badge--muted',
         ];
-        return $classes[$this->product->status] ?? '';
+
+        return $classes[$status] ?? '';
     }
 
     /**
-     * GetStockLabel functionality helper.
-     *
-     * @return string Output payload.
+     * تسمية حالة المخزون
      */
     private function getStockLabel(): string
     {
+        $status = (string) ($this->product->stockStatus ?? 'instock');
+
         $labels = [
-            'instock'    => __('متوفر', 'vmp'),
-            'outofstock' => __('نفد المخزون', 'vmp'),
-            'onbackorder'=> __('طلب مسبق', 'vmp'),
+            'instock'     => __('متوفر', 'vmp'),
+            'outofstock'  => __('نفد المخزون', 'vmp'),
+            'onbackorder' => __('طلب مسبق', 'vmp'),
         ];
-        return $labels[$this->product->stockStatus] ?? $this->product->stockStatus;
+
+        return $labels[$status] ?? $status;
     }
 
     /**
-     * GetImageUrl functionality helper.
-     *
-     * @return string Output payload.
+     * رابط صورة المنتج الرئيسية
      */
     private function getImageUrl(): string
     {
-        if ($this->product->imageId > 0) {
-            $url = wp_get_attachment_image_url($this->product->imageId, 'woocommerce_thumbnail');
-            return $url ? $this->url($url) : '';
+        $imageId = (int) ($this->product->imageId ?? 0);
+
+        if ($imageId > 0 && wp_attachment_is_image($imageId)) {
+            $url = wp_get_attachment_image_url($imageId, 'woocommerce_thumbnail');
+            if ($url) {
+                return $this->url($url);
+            }
         }
-        return function_exists('wc_placeholder_img_src') ? wc_placeholder_img_src() : '';
+
+        // ✅ صورة افتراضية WooCommerce
+        return function_exists('wc_placeholder_img_src')
+            ? $this->url(wc_placeholder_img_src())
+            : '';
     }
 
     /**
-     * GetGalleryUrls functionality helper.
-     *
-     * @return array Output payload.
+     * روابط معرض الصور
      */
     private function getGalleryUrls(): array
     {
+        $galleryIds = $this->product->galleryImageIds ?? [];
+        if (!is_array($galleryIds) || empty($galleryIds)) {
+            return [];
+        }
+
         $urls = [];
-        foreach ($this->product->galleryImageIds as $imageId) {
-            $url = wp_get_attachment_image_url((int) $imageId, 'woocommerce_thumbnail');
-            if ($url) {
-                $urls[] = $this->url($url);
+        foreach ($galleryIds as $imageId) {
+            $id = (int) $imageId;
+            if ($id > 0 && wp_attachment_is_image($id)) {
+                $url = wp_get_attachment_image_url($id, 'woocommerce_thumbnail');
+                if ($url) {
+                    $urls[] = $this->url($url);
+                }
             }
         }
+
         return $urls;
     }
 
     /**
-     * FormatDate functionality helper.
-     *
-     * @param ?string $date Description index.
-     * @return string Output payload.
+     * رابط تعديل المنتج في لوحة البائع
+     */
+    private function getEditUrl(int $productId): string
+    {
+        $settings = get_option('vmp_settings', []);
+        $pageId   = (int) ($settings['display']['dashboard_page'] ?? 0);
+        $baseUrl  = $pageId && get_post($pageId) ? get_permalink($pageId) : home_url('/vendor-dashboard/');
+
+        return add_query_arg([
+            'vmp_page' => 'edit-product',
+            'id'       => $productId,
+        ], trailingslashit($baseUrl));
+    }
+
+    /**
+     * تنسيق التاريخ
      */
     private function formatDate(?string $date): string
     {
-        if (!$date) return '';
+        if (empty($date)) {
+            return '';
+        }
+
         $timestamp = strtotime($date);
-        return $timestamp ? date_i18n(get_option('date_format'), $timestamp) : $date;
+        if (!$timestamp) {
+            return (string) $date;
+        }
+
+        return wp_date(get_option('date_format'), $timestamp) ?: (string) $date;
     }
 }

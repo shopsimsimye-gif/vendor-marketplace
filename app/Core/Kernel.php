@@ -138,10 +138,6 @@ class Kernel
             }
         }
 
-        // 4. التحقق من WooCommerce
-        $woocommerceActive = $this->container->has('woocommerce.active')
-            && (bool) $this->container->make('woocommerce.active');
-
         // 5. باقي المزودات
         $skipClasses = [
             \VMP\Providers\InstallServiceProvider::class,

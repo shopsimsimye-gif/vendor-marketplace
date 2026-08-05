@@ -7,30 +7,29 @@ use VMP\DTO\ProductDTO;
 use VMP\Contracts\VendorRepositoryInterface;
 use VMP\Core\Container;
 
+/**
+ * Class UpdateProductRequest
+ *
+ * @package vendor-marketplace
+ */
 class UpdateProductRequest extends AbstractRequest
 {
     /**
      * التحقق من الصلاحيات
-     * ✅ إصلاح صلاحية vmp_vendor_products
      */
     public function authorize(): bool
     {
-        // [QA 2026-08-02] لا نمنح دور/صلاحية البائع هنا (self-heal مُزال).
-        // منح vmp_vendor + vmp_vendor_products يتم حصرياً عند الموافقة على طلب
-        // الانضمام (VendorRequestRepository::approve / VendorService::approveVendor).
-        // كان هذا يكتب في DB في كل طلب تحديث من بائع بلا صلاحية — مكلف وقابل للاستغلال.
         return current_user_can('vmp_vendor_products');
     }
 
     /**
      * تحويل بيانات الطلب إلى DTO
-     * ✅ تعيين الحقول بشكل صحيح من النموذج
      */
     public function toDTO(): ProductDTO
     {
         $data = $this->validated();
 
-        // ✅ تعيين vendor_id من المستخدم الحالي
+        // تعيين vendor_id من المستخدم الحالي
         if (empty($data['vendor_id'])) {
             try {
                 $userId = get_current_user_id();
@@ -39,39 +38,37 @@ class UpdateProductRequest extends AbstractRequest
                 if ($vendor) {
                     $data['vendor_id'] = (int) $vendor->id;
                 } else {
-                    // Fallback: user_meta
                     $vendorId = (int) get_user_meta($userId, 'vmp_vendor_id', true);
-                    if ($vendorId) {
+                    if ($vendorId > 0) {
                         $data['vendor_id'] = $vendorId;
                     }
                 }
             } catch (\Exception $e) {
-                $data['vendor_id'] = (int) get_user_meta(get_current_user_id(), 'vmp_vendor_id', true);
+                $vendorId = (int) get_user_meta(get_current_user_id(), 'vmp_vendor_id', true);
+                if ($vendorId > 0) {
+                    $data['vendor_id'] = $vendorId;
+                }
             }
         }
 
-        // ✅ تحويل الحقول من النموذج إلى ProductDTO
-        // النموذج يرسل product_name وليس title
+        // تحويل الحقول من النموذج إلى ProductDTO
         if (isset($data['product_name'])) {
             $data['title'] = $data['product_name'];
         }
 
-        // النموذج يرسل category (ID واحد) وليس category_ids (مصفوفة)
         if (isset($data['category']) && !empty($data['category'])) {
             $data['category_ids'] = [(int) $data['category']];
         }
 
-        // النموذج يرسل manage_stock (yes/no) وليس stock_status
         if (isset($data['manage_stock'])) {
             if ($data['manage_stock'] === 'yes' && isset($data['stock_quantity'])) {
-                $data['stock_status'] = 'instock'; // سيتم إدارة المخزون
+                $data['stock_status'] = 'instock';
             } elseif ($data['manage_stock'] === 'no') {
                 $data['stock_status'] = 'instock';
                 $data['stock_quantity'] = 0;
             }
         }
 
-        // ✅ product_id هو vendor_product_id من النموذج
         if (isset($data['vendor_product_id'])) {
             $data['product_id'] = (int) $data['vendor_product_id'];
         }
@@ -81,21 +78,20 @@ class UpdateProductRequest extends AbstractRequest
 
     /**
      * قواعد التحقق
-     * ✅ متوافقة مع الحقول المرسلة
      */
     protected function rules(): array
     {
         return [
-            'vendor_product_id' => ['required', 'integer'],
+            'vendor_product_id' => ['required', 'integer', 'min:1'],
             'product_name'      => ['required', 'string', 'min:3', 'max:255'],
-            'regular_price'     => ['required', 'numeric', 'min_value:0'],
-            'sale_price'        => ['numeric', 'min_value:0'],
-            'category'          => ['integer'],
-            'short_description' => ['string'],
-            'description'       => ['string'],
-            'manage_stock'      => ['string', 'in:yes,no'],
-            'stock_quantity'    => ['integer', 'min_value:0'],
-            'image_id'          => ['integer'],
+            'regular_price'     => ['required', 'numeric', 'min:0'],
+            'sale_price'        => ['nullable', 'numeric', 'min:0'],
+            'category'          => ['nullable', 'integer', 'min:1'],
+            'short_description' => ['nullable', 'string', 'max:500'],
+            'description'       => ['nullable', 'string'],
+            'manage_stock'      => ['nullable', 'string', 'in:yes,no'],
+            'stock_quantity'    => ['nullable', 'integer', 'min:0'],
+            'image_id'          => ['nullable', 'integer', 'min:1'],
         ];
     }
 
@@ -128,7 +124,7 @@ class UpdateProductRequest extends AbstractRequest
             'product_name.required'      => __('اسم المنتج مطلوب.', 'vmp'),
             'product_name.min'           => __('اسم المنتج يجب أن يكون 3 أحرف على الأقل.', 'vmp'),
             'regular_price.required'     => __('السعر الأساسي مطلوب.', 'vmp'),
-            'regular_price.min_value'    => __('السعر الأساسي يجب أن يكون أكبر من أو يساوي 0.', 'vmp'),
+            'regular_price.min'          => __('السعر الأساسي يجب أن يكون أكبر من أو يساوي 0.', 'vmp'),
             'category.integer'           => __('التصنيف يجب أن يكون رقماً صحيحاً.', 'vmp'),
             'manage_stock.in'            => __('قيمة إدارة المخزون غير صالحة.', 'vmp'),
         ];

@@ -1,17 +1,17 @@
 <?php
+/**
+ * ApiResponse — كلاس أساسي لاستجابات JSON
+ *
+ * @package VMP\Http\Responses
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\Responses;
 
 defined('ABSPATH') || exit;
 
 use JsonSerializable;
 
-/**
- * Class ApiResponse
- *
- * Description of administrative platform component ApiResponse.
- *
- * @package vendor-marketplace
- */
 abstract class ApiResponse implements JsonSerializable
 {
     public function __construct(
@@ -20,16 +20,12 @@ abstract class ApiResponse implements JsonSerializable
     ) {}
 
     /**
-     * ToArray functionality helper.
-     *
-     * @return array Output payload.
+     * تحويل الاستجابة إلى array
      */
     abstract public function toArray(): array;
 
     /**
-     * JsonSerialize functionality helper.
-     *
-     * @return array Output payload.
+     * @return array
      */
     public function jsonSerialize(): array
     {
@@ -37,9 +33,7 @@ abstract class ApiResponse implements JsonSerializable
     }
 
     /**
-     * GetStatusCode functionality helper.
-     *
-     * @return int Output payload.
+     * الحصول على HTTP status code
      */
     public function getStatusCode(): int
     {
@@ -47,21 +41,33 @@ abstract class ApiResponse implements JsonSerializable
     }
 
     /**
-     * Send functionality helper.
+     * إرسال الاستجابة وإنهاء التنفيذ
      *
-     * @return never Output payload.
+     * @return void
      */
-    public function send(): never
+    public function send(): void
     {
         if (!headers_sent()) {
             http_response_code($this->statusCode);
-            header('Content-Type: application/json; charset=utf-8');
+            header('Content-Type: application/json');
+
             foreach ($this->headers as $key => $value) {
-                header("{$key}: {$value}");
+                $safeKey   = str_replace(["\r", "\n"], '', (string) $key);
+                $safeValue = str_replace(["\r", "\n"], '', (string) $value);
+                header("{$safeKey}: {$safeValue}");
             }
         }
 
-        echo wp_json_encode($this->toArray());
+        $json = wp_json_encode($this->toArray());
+
+        if ($json === false) {
+            $json = wp_json_encode([
+                'success' => false,
+                'message' => 'JSON encoding failed.',
+            ]);
+        }
+
+        echo $json;
         exit;
     }
 }

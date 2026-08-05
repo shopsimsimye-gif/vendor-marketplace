@@ -67,8 +67,9 @@ class VendorServiceProvider extends ServiceProvider
         }, 20);
 
         // ─── تسجيل مسارات REST API للتسجيل أحادي الخطوة ───
+        // (نقل المنطق إلى البنية الجديدة: RestVendorRegistrationController عبر الحاوية)
         add_action('rest_api_init', function () {
-            $regController = new \VMP\Modules\VendorRegistration\Controllers\RegistrationController();
+            $regController = $this->container->make(\VMP\Controllers\RestVendorRegistrationController::class);
 
             register_rest_route('vmp/v1', '/vendor/register-guest', [
                 'methods' => 'POST',
@@ -328,6 +329,85 @@ class VendorServiceProvider extends ServiceProvider
      *
      * @return void
      */
+    /**
+     * بيانات JS لصفحة الملف الشخصي (تطابق ما كان يُحقن inline في القالب).
+     *
+     * @return array<string, mixed>
+     */
+    private function profileJsData(): array
+    {
+        $user_id = get_current_user_id();
+        $store_base = get_option('vmp_store_base', 'store');
+        $store_slug = '';
+        $vendor = $this->vendorForCurrentUser();
+        if ($vendor) {
+            $store_slug = !empty($vendor->store_slug) ? $vendor->store_slug : sanitize_title($vendor->store_name);
+            if (empty($store_slug)) {
+                $store_slug = 'store-' . $vendor->id;
+            }
+        }
+        $store_base_url = home_url('/' . $store_base . '/');
+
+        return [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('vmp_public_nonce'),
+            'storeBase' => $store_base,
+            'storeBaseUrl' => $store_base_url,
+            'userId' => (int) $user_id,
+            'i18n' => [
+                'copied' => __('تم نسخ رابط المتجر!', 'vmp'),
+                'slugAvailable' => __('الرابط متاح', 'vmp'),
+                'slugTaken' => __('الرابط مستخدم مسبقاً', 'vmp'),
+                'slugInvalid' => __('أحرف إنجليزية صغيرة، أرقام، وشرطات فقط.', 'vmp'),
+                'slugCheckError' => __('تعذر التحقق', 'vmp'),
+                'checking' => __('جاري التحقق...', 'vmp'),
+                'saved' => __('تم حفظ التغييرات بنجاح.', 'vmp'),
+                'saveError' => __('حدث خطأ أثناء الحفظ.', 'vmp'),
+                'connectionError' => __('خطأ في الاتصال بالخادم.', 'vmp'),
+                'saving' => __('جاري الحفظ...', 'vmp'),
+                'saveBtn' => __('حفظ التعديلات', 'vmp'),
+                'chooseImage' => __('اختر صورة', 'vmp'),
+                'passwordMismatch' => __('كلمتا المرور غير متطابقتين.', 'vmp'),
+                'passwordTooShort' => __('كلمة المرور يجب أن تكون 8 أحرف على الأقل.', 'vmp'),
+            ],
+        ];
+    }
+
+    /**
+     * معدل العمولة للمستخدم الحالي (يطابق منطق vendor-edit-product.php).
+     */
+    private function currentUserCommissionRate(): float
+    {
+        $vendor = $this->vendorForCurrentUser();
+        if (!$vendor) {
+            return 10.0;
+        }
+        try {
+            $sub_repo = $this->container->make(\VMP\Contracts\SubscriptionRepositoryInterface::class);
+            $plan_repo = $this->container->make(\VMP\Contracts\SubscriptionPlanRepositoryInterface::class);
+            $active_sub = $sub_repo->findActiveByVendor((int) $vendor->id);
+            $plan = $active_sub ? $plan_repo->find((int) $active_sub->plan_id) : $plan_repo->findBySlug('free');
+            return $plan ? (float) $plan->commission_rate : 10.0;
+        } catch (\Throwable $e) {
+            return 10.0;
+        }
+    }
+
+    /**
+     * البائع المسجل للمستخدم الحالي (إن وُجد).
+     *
+     * @return \VMP\Models\Vendor|null
+     */
+    private function vendorForCurrentUser()
+    {
+        try {
+            $vendor_repo = $this->container->make(\VMP\Contracts\VendorRepositoryInterface::class);
+            return $vendor_repo->findByUserId((int) get_current_user_id());
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     private function registerAssets(): void
     {
         add_action('wp_enqueue_scripts', function (): void {
@@ -447,6 +527,77 @@ class VendorServiceProvider extends ServiceProvider
                     VMP_VERSION,
                     true
                 );
+
+                // بيانات تسجيل البائع (تطابق ما كان يُحقن inline في القالب)
+                $is_logged_in = is_user_logged_in();
+                wp_localize_script('vmp-register-js', 'vmpRegisterData', [
+                    'restGuestUrl' => esc_url_raw(rest_url('vmp/v1/vendor/register-guest')),
+                    'restApplyUrl' => esc_url_raw(rest_url('vmp/v1/vendor/apply')),
+                    'ajaxUrl' => esc_url_raw(admin_url('admin-ajax.php')),
+                    'isLoggedIn' => (bool) $is_logged_in,
+                    'strings' => [
+                        'submit' => $is_logged_in ? __('إرسال طلب الترقية', 'vmp') : __('تسجيل كبائع', 'vmp'),
+                        'submitting' => __('جاري إرسال الطلب...', 'vmp'),
+                        'error' => __('حدث خطأ أثناء معالجة الطلب', 'vmp'),
+                        'passwordMismatch' => __('كلمتا المرور غير متطابقتين', 'vmp'),
+                        'termsRequired' => __('يجب الموافقة على الشروط والأحكام', 'vmp'),
+                    ],
+                ]);
+            }
+
+            // ─── 8c. تحميل أصول مخصصة لكل صفحة (فصل inline CSS/JS إلى ملفات خارجية — task B) ───
+            if ($current_page === 'dashboard') {
+                wp_enqueue_style('vmp-dashboard-css', VMP_PLUGIN_URL . 'public/css/vendor-dashboard.css', ['vmp-public'], VMP_VERSION);
+                wp_enqueue_script('vmp-dashboard-js', VMP_PLUGIN_URL . 'public/js/vendor-dashboard.js', ['jquery', 'vmp-public'], VMP_VERSION, true);
+            }
+
+            if ($current_page === 'store') {
+                wp_enqueue_style('vmp-store-css', VMP_PLUGIN_URL . 'public/css/vendor-store.css', ['vmp-public'], VMP_VERSION);
+            }
+
+            if ($current_page === 'profile') {
+                wp_enqueue_style('vmp-profile-css', VMP_PLUGIN_URL . 'public/css/vendor-profile.css', ['vmp-public'], VMP_VERSION);
+                wp_enqueue_script('vmp-profile-js', VMP_PLUGIN_URL . 'public/js/vendor-profile.js', ['jquery', 'vmp-public', 'media-editor'], VMP_VERSION, true);
+                wp_localize_script('vmp-profile-js', 'vmp_profile_data', $this->profileJsData());
+            }
+
+            if ($current_page === 'orders') {
+                wp_enqueue_style('vmp-orders-css', VMP_PLUGIN_URL . 'public/css/vendor-orders.css', ['vmp-public'], VMP_VERSION);
+                wp_enqueue_script('vmp-orders-js', VMP_PLUGIN_URL . 'public/js/vendor-orders.js', ['jquery', 'vmp-public'], VMP_VERSION, true);
+                wp_localize_script('vmp-orders-js', 'vmp_orders_data', [
+                    'i18n' => [
+                        'loading' => __('جاري تحميل التفاصيل...', 'vmp'),
+                        'orderNumber' => __('رقم الطلب:', 'vmp'),
+                        'customer' => __('العميل:', 'vmp'),
+                        'email' => __('البريد:', 'vmp'),
+                        'date' => __('التاريخ:', 'vmp'),
+                        'total' => __('الإجمالي:', 'vmp'),
+                        'noDetails' => __('لا توجد تفاصيل إضافية.', 'vmp'),
+                        'loadFailed' => __('تعذر تحميل التفاصيل.', 'vmp'),
+                        'loadError' => __('حدث خطأ أثناء تحميل التفاصيل.', 'vmp'),
+                    ],
+                ]);
+            }
+
+            if ($current_page === 'subscriptions') {
+                wp_enqueue_script('vmp-subscriptions-js', VMP_PLUGIN_URL . 'public/js/vendor-subscriptions.js', ['jquery', 'vmp-public'], VMP_VERSION, true);
+                wp_localize_script('vmp-subscriptions-js', 'vmp_subs_data', [
+                    'i18n' => [
+                        'confirmChange' => __('هل أنت متأكد من طلب تغيير خطتك إلى', 'vmp'),
+                        'willReview' => __('سيتم مراجعة الطلب من قبل المشرف.', 'vmp'),
+                        'sending' => __('جاري الإرسال...', 'vmp'),
+                        'requestChange' => __('طلب تغيير الخطة', 'vmp'),
+                        'connError' => __('حدث خطأ في الاتصال.', 'vmp'),
+                        'confirmCancel' => __('هل أنت متأكد من إلغاء طلب تغيير الخطة؟', 'vmp'),
+                        'canceling' => __('جاري...', 'vmp'),
+                        'cancelRequest' => __('إلغاء الطلب', 'vmp'),
+                    ],
+                ]);
+            }
+
+            if ($current_page === 'edit-product') {
+                wp_enqueue_script('vmp-edit-product-js', VMP_PLUGIN_URL . 'public/js/vendor-edit-product.js', ['jquery', 'vmp-public'], VMP_VERSION, true);
+                wp_localize_script('vmp-edit-product-js', 'vmp_edit_product_data', ['commissionRate' => $this->currentUserCommissionRate()]);
             }
 
             // ─── 9. كائن واحد يحتوي كل شيء (بدون تكرار) ───

@@ -199,6 +199,8 @@ class Test_Plugin_Logic extends WP_UnitTestCase {
 
         $ex = new WithdrawalException('Withdrawal limit reached');
         $this->assertEquals('Withdrawal limit reached', $ex->getMessage());
+    }
+
     /**
      * Test Container Singleton And Forget functionality helper.
      *
@@ -325,7 +327,7 @@ public function test_vendor_helper_dashboard_url() {
 public function test_vendor_helper_price_formatting() {
     $formatted = \VMP\Support\VendorHelper::price(15.5);
     $this->assertNotEmpty($formatted);
-}\n}
+}
 
     /**
      * Test Dtos Serialization functionality helper.
@@ -333,4 +335,23 @@ public function test_vendor_helper_price_formatting() {
      * @return void Output payload.
      */
     public function test_dtos_serialization() {
-        $registerDTO = new RegisterVendorDTO('Store name', 'store
+        $registerDTO = \VMP\DTO\RegisterVendorDTO::fromArray([
+            'store_name' => 'Store name',
+            'store_slug' => 'store',
+            'store_description' => 'Description',
+            'terms_accepted' => true,
+        ]);
+        $this->assertSame('Store name', $registerDTO->store_name);
+        $this->assertSame('store', $registerDTO->store_slug);
+        $this->assertTrue($registerDTO->terms_accepted);
+
+        $array = $registerDTO->toArray();
+        $this->assertArrayHasKey('store_name', $array);
+        $this->assertSame('Store name', $array['store_name']);
+
+        $json = json_encode($registerDTO);
+        $this->assertNotFalse($json);
+        $decoded = json_decode($json, true);
+        $this->assertSame('store', $decoded['store_slug']);
+    }
+}

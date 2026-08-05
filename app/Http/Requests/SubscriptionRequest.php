@@ -6,12 +6,20 @@ defined('ABSPATH') || exit;
 /**
  * Class SubscriptionRequest
  *
- * Description of administrative platform component SubscriptionRequest.
- *
  * @package vendor-marketplace
  */
 class SubscriptionRequest extends AbstractRequest
 {
+    /**
+     * Authorize functionality helper.
+     *
+     * @return bool Output payload.
+     */
+    public function authorize(): bool
+    {
+        return current_user_can('vmp_manage_subscriptions');
+    }
+
     /**
      * Rules functionality helper.
      *
@@ -20,8 +28,8 @@ class SubscriptionRequest extends AbstractRequest
     protected function rules(): array
     {
         return [
-            'vendor_id' => ['required', 'integer'],
-            'plan_id'   => ['required', 'integer'],
+            'vendor_id' => ['required', 'integer', 'min:1'],
+            'plan_id'   => ['required', 'integer', 'min:1'],
         ];
     }
 

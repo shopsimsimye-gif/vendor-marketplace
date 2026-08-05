@@ -23,7 +23,8 @@ if (!isset($vendor) || !$vendor) {
         $uri = trim((string) $_SERVER['REQUEST_URI']);
         $uri = wp_parse_url($uri, PHP_URL_PATH) ?: $uri;
         $uri = trim((string) $uri, '/');
-        if (preg_match('#^store/([^/]+)$#', $uri, $matches)) {
+        $store_base = get_option('vmp_store_base', 'store');
+        if (preg_match('#^' . preg_quote($store_base, '#') . '/([^/]+)$#', $uri, $matches)) {
             $resolved_slug = sanitize_text_field($matches[1]);
         }
     }
@@ -40,36 +41,37 @@ if (!isset($vendor) || !$vendor) {
 }
 
 if (!isset($vendor) || !$vendor || !isset($vendor->status) || $vendor->status !== 'approved') {
-    echo '<p class="vmp-not-found">' . __('المتجر غير موجود.', 'vmp') . '</p>';
+    echo '<p class="vmp-not-found">' . esc_html__('المتجر غير موجود.', 'vmp') . '</p>';
     return;
 }
 
 // ── استخدام الحاوية للحصول على المستودعات (Dependency Injection) ──
-// ✅ استخدام الواجهات (Contracts) بدلاً من الـ Concrete classes
 $container = \VMP\Core\Container::getInstance();
 $product_repo = $container->make(\VMP\Contracts\ProductRepositoryInterface::class);
 $sub_repo = $container->make(\VMP\Contracts\SubscriptionRepositoryInterface::class);
 $plan_repo = $container->make(\VMP\Contracts\SubscriptionPlanRepositoryInterface::class);
 
-// ── جلب خطة الاشتراك والميزات (مع التخزين المؤقت) ──
-$cache_key = 'vmp_store_' . $vendor->id . '_data';
+// ── جلب خطة الاشتراك والميزات (مع التخزين المؤقت ببيانات بسيطة فقط) ──
+$cache_key = 'vmp_store_' . (int) $vendor->id . '_data';
 $store_data = get_transient($cache_key);
 
-if (false === $store_data) {
+if (false === $store_data || !is_array($store_data)) {
     $active_sub = $sub_repo->findActiveByVendor((int) $vendor->id);
     $plan = $active_sub ? $plan_repo->find((int) $active_sub->plan_id) : null;
     $features = $plan ? $plan_repo->getFeatures((int) $plan->id) : [];
 
+    // ✅ تخزين scalars فقط لتجنب مشاكل serialize/unserialize
     $store_data = [
-        'features' => $features,
-        'plan' => $plan,
-        'active_sub' => $active_sub,
+        'features'     => is_array($features) ? $features : [],
+        'plan_name'    => $plan ? (string) $plan->name : null,
+        'plan_id'      => $plan ? (int) $plan->id : 0,
+        'plan_slug'    => $plan && !empty($plan->slug) ? (string) $plan->slug : 'free',
+        'sub_status'   => $active_sub && !empty($active_sub->status) ? (string) $active_sub->status : null,
+        'sub_id'       => $active_sub ? (int) $active_sub->id : 0,
     ];
     set_transient($cache_key, $store_data, 300); // 5 دقائق
 } else {
-    $features = $store_data['features'];
-    $plan = $store_data['plan'];
-    $active_sub = $store_data['active_sub'];
+    $features = is_array($store_data['features']) ? $store_data['features'] : [];
 }
 
 $has_whatsapp = !empty($features['whatsapp_button']);
@@ -79,12 +81,16 @@ $wa_number = !empty($vendor->whatsapp_number) ? $vendor->whatsapp_number : ($ven
 $wa_number_clean = ltrim(preg_replace('/[^0-9+]/', '', $wa_number), '+');
 
 // ── الصور (باستخدام الأحجام المناسبة) ──
-$logo_url = !empty($vendor->store_logo) 
-    ? wp_get_attachment_image_url($vendor->store_logo, 'medium') 
-    : VMP_PLUGIN_URL . 'assets/images/default-logo.png';
-$banner_url = !empty($vendor->store_banner) 
-    ? wp_get_attachment_image_url($vendor->store_banner, 'large') 
-    : VMP_PLUGIN_URL . 'assets/images/default-banner.jpg';
+$default_logo   = trailingslashit(VMP_PLUGIN_URL) . 'assets/images/default-logo.png';
+$default_banner = trailingslashit(VMP_PLUGIN_URL) . 'assets/images/default-banner.jpg';
+
+$logo_url = (!empty($vendor->store_logo) && wp_attachment_is_image($vendor->store_logo))
+    ? wp_get_attachment_image_url($vendor->store_logo, 'medium')
+    : $default_logo;
+
+$banner_url = (!empty($vendor->store_banner) && wp_attachment_is_image($vendor->store_banner))
+    ? wp_get_attachment_image_url($vendor->store_banner, 'large')
+    : $default_banner;
 
 // ── جلب المنتجات عبر Repository ──
 $paged = get_query_var('paged') ?: 1;
@@ -98,7 +104,7 @@ $products = $product_repo->getByVendor((int) $vendor->id, [
 ]);
 
 $total_products = $product_repo->countByVendor((int) $vendor->id, 'approved');
-$pages = (int) ceil($total_products / $limit);
+$pages = ($limit > 0) ? (int) ceil($total_products / $limit) : 0;
 
 // ── تجهيز منتجات WooCommerce (حل N+1) ──
 $wc_products_by_id = [];
@@ -107,24 +113,31 @@ if (!empty($products)) {
     if (!empty($product_ids)) {
         foreach (wc_get_products([
             'include' => $product_ids,
-            'status' => 'publish',
-            'limit' => -1,
+            'status'  => 'publish',
+            'limit'   => -1,
         ]) as $wc_p) {
             $wc_products_by_id[$wc_p->get_id()] = $wc_p;
         }
     }
 }
+
+// ── بيانات مشتركة ──
+$currency        = get_woocommerce_currency();
+$store_base      = get_option('vmp_store_base', 'store');
+$store_page_url  = home_url('/' . $store_base . '/' . $vendor->store_slug . '/');
+$vendor_name     = !empty($vendor->store_name) ? $vendor->store_name : '';
+$vendor_desc     = !empty($vendor->store_description) ? $vendor->store_description : '';
 ?>
 
 <div class="vmp-wrap" itemscope itemtype="https://schema.org/Organization">
     <div class="vmp-store-container">
 
         <!-- ════════════════════════════════════════════════ -->
-        <!-- Schema: متجر البائع -->
+        <!-- Schema: متجر البائع (مخفي) -->
         <!-- ════════════════════════════════════════════════ -->
-        <meta itemprop="name" content="<?php echo esc_attr($vendor->store_name); ?>">
-        <meta itemprop="description" content="<?php echo esc_attr($vendor->store_description ?? ''); ?>">
-        <meta itemprop="url" content="<?php echo esc_url(home_url('/store/' . $vendor->store_slug)); ?>">
+        <meta itemprop="name" content="<?php echo esc_attr($vendor_name); ?>">
+        <meta itemprop="description" content="<?php echo esc_attr($vendor_desc); ?>">
+        <meta itemprop="url" content="<?php echo esc_url($store_page_url); ?>">
         <?php if (!empty($logo_url)) : ?>
             <meta itemprop="logo" content="<?php echo esc_url($logo_url); ?>">
         <?php endif; ?>
@@ -133,12 +146,14 @@ if (!empty($products)) {
         <!-- غلاف المتجر -->
         <!-- ════════════════════════════════════════════════ -->
         <div class="vmp-store-cover">
-            <img src="<?php echo esc_url($banner_url); ?>" alt="<?php echo esc_attr($vendor->store_name); ?>" class="vmp-store-cover-img" loading="lazy">
+            <!-- ✅ إزالة loading="lazy" من الصورة الأولى (Above the Fold / LCP) -->
+            <img src="<?php echo esc_url($banner_url); ?>" alt="<?php echo esc_attr($vendor_name); ?>" class="vmp-store-cover-img">
             <div class="vmp-store-cover-overlay">
                 <div class="vmp-store-cover-content">
-                    <h1 class="vmp-store-title" itemprop="name"><?php echo esc_html($vendor->store_name); ?></h1>
-                    <?php if (!empty($vendor->store_description)) : ?>
-                        <p class="vmp-store-desc" itemprop="description"><?php echo nl2br(esc_html($vendor->store_description)); ?></p>
+                    <!-- ✅ إزالة itemprop="name" من العنصر المرئي لتجنب التكرار مع meta -->
+                    <h1 class="vmp-store-title"><?php echo esc_html($vendor_name); ?></h1>
+                    <?php if (!empty($vendor_desc)) : ?>
+                        <p class="vmp-store-desc"><?php echo nl2br(esc_html($vendor_desc)); ?></p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -150,7 +165,8 @@ if (!empty($products)) {
         <div class="vmp-store-info-grid">
             <div class="vmp-store-info-card">
                 <div class="vmp-store-logo-wrap">
-                    <img src="<?php echo esc_url($logo_url); ?>" alt="<?php echo esc_attr($vendor->store_name); ?>" class="vmp-store-logo-img" loading="lazy">
+                    <!-- ✅ إزالة loading="lazy" من الشعار (Above the Fold) -->
+                    <img src="<?php echo esc_url($logo_url); ?>" alt="<?php echo esc_attr($vendor_name); ?>" class="vmp-store-logo-img">
                 </div>
 
                 <!-- رقم الهاتف -->
@@ -199,7 +215,13 @@ if (!empty($products)) {
 
                 <!-- ✅ زر واتساب العام (مع تتبع النقرات) -->
                 <?php if ($has_whatsapp && !empty($wa_number_clean)) : 
-                    $whatsapp_message = rawurlencode(sprintf(__('مرحباً، أريد الاستفسار من متجر %s', 'vmp'), $vendor->store_name));
+                    $whatsapp_message = rawurlencode(
+                        sprintf(
+                            /* translators: %s: store name */
+                            __('مرحباً، أريد الاستفسار من متجر %s', 'vmp'),
+                            $vendor_name
+                        )
+                    );
                     $wa_url = 'https://wa.me/' . $wa_number_clean . '?text=' . $whatsapp_message;
                 ?>
                     <a href="<?php echo esc_url($wa_url); ?>" 
@@ -212,7 +234,7 @@ if (!empty($products)) {
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                         </svg>
-                        <?php _e('تواصل عبر واتساب', 'vmp'); ?>
+                        <?php echo esc_html__('تواصل عبر واتساب', 'vmp'); ?>
                     </a>
                 <?php endif; ?>
             </div>
@@ -226,7 +248,7 @@ if (!empty($products)) {
                         if ($embed) {
                             echo wp_kses_post($embed);
                         } else {
-                            echo '<p style="color:var(--vmp-text-muted);">' . __('رابط الفيديو غير صالح.', 'vmp') . '</p>';
+                            echo '<p style="color:var(--vmp-text-muted);">' . esc_html__('رابط الفيديو غير صالح.', 'vmp') . '</p>';
                         }
                         ?>
                     </div>
@@ -238,17 +260,19 @@ if (!empty($products)) {
         <!-- قائمة المنتجات -->
         <!-- ════════════════════════════════════════════════ -->
         <div class="vmp-store-products">
-            <?php do_action('woocommerce_before_shop_loop'); ?>
+            <!-- ⚠️ تحذير: هذا hook مخصص للـ main query. لأننا نستخدم loop مخصصاً، قد لا تعمل بعض الإضافات بشكل صحيح. -->
+            <?php do_action('vmp_before_store_products', $vendor, $products); ?>
 
-            <h2 class="vmp-products-title">🛍️ <?php _e('المنتجات', 'vmp'); ?></h2>
+            <h2 class="vmp-products-title">🛍️ <?php echo esc_html__('المنتجات', 'vmp'); ?></h2>
             <div class="vmp-products-grid">
 
                 <?php if (empty($products)) : ?>
                     <div class="vmp-empty">
-                        <p><?php _e('لا توجد منتجات معروضة حالياً.', 'vmp'); ?></p>
+                        <p><?php echo esc_html__('لا توجد منتجات معروضة حالياً.', 'vmp'); ?></p>
                     </div>
                 <?php else : ?>
-                    <?php foreach ($products as $p) :
+                    <?php 
+                    foreach ($products as $p) :
                         $wc_p = $wc_products_by_id[(int) $p->product_id] ?? null;
                         if (!$wc_p) {
                             continue;
@@ -257,8 +281,6 @@ if (!empty($products)) {
                         $product_url = get_permalink($p->product_id);
                         
                         // تعيين $product لـ WooCommerce Hooks بأمان
-                        // ✅ استخدام wc_setup_product_data() بدلاً من التلاعب اليدوي
-                        //    حتى لا يبقى $product معطلاً عند أي exception أو return مبكر
                         global $product;
                         $old_product = $product;
                         $product = $wc_p;
@@ -267,24 +289,32 @@ if (!empty($products)) {
                         }
                     ?>
                         <div class="vmp-product-card" itemscope itemtype="https://schema.org/Product">
+                            <!-- ✅ Schema image مخفي -->
+                            <meta itemprop="image" content="<?php echo esc_url($img); ?>">
+                            <meta itemprop="url" content="<?php echo esc_url($product_url); ?>">
+                            
                             <a href="<?php echo esc_url($product_url); ?>" class="vmp-product-link">
+                                <!-- ✅ loading="lazy" على صور المنتجات (Below the Fold) -->
                                 <img src="<?php echo esc_url($img); ?>" alt="<?php echo esc_attr($wc_p->get_name()); ?>" class="vmp-product-img" loading="lazy">
                             </a>
                             <div class="vmp-product-body" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-                                <h3 class="vmp-product-name" itemprop="name">
-                                    <a href="<?php echo esc_url($product_url); ?>"><?php echo esc_html($wc_p->get_name()); ?></a>
+                                <h3 class="vmp-product-name">
+                                    <a href="<?php echo esc_url($product_url); ?>"><span itemprop="name"><?php echo esc_html($wc_p->get_name()); ?></span></a>
                                 </h3>
 
                                 <!-- اسم البائع بخط صغير -->
                                 <div class="vmp-product-vendor">
-                                    <?php _e('بواسطة', 'vmp'); ?> 
-                                    <a href="<?php echo home_url('/store/' . $vendor->store_slug); ?>" rel="noopener noreferrer"><?php echo esc_html($vendor->store_name); ?></a>
+                                    <?php echo esc_html__('بواسطة', 'vmp'); ?> 
+                                    <a href="<?php echo esc_url($store_page_url); ?>" rel="noopener noreferrer"><?php echo esc_html($vendor_name); ?></a>
                                 </div>
 
-                                <!-- السعر مع Schema -->
-                                <div class="vmp-product-price" itemprop="price">
+                                <!-- ✅ السعر مع Schema صحيح -->
+                                <div class="vmp-product-price">
                                     <?php echo $wc_p->get_price_html(); ?>
-                                    <meta itemprop="priceCurrency" content="<?php echo esc_attr(get_woocommerce_currency()); ?>">
+                                    <meta itemprop="price" content="<?php echo esc_attr($wc_p->get_price()); ?>">
+                                    <meta itemprop="priceCurrency" content="<?php echo esc_attr($currency); ?>">
+                                    <link itemprop="availability" href="<?php echo $wc_p->is_in_stock() ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'; ?>" />
+                                    <meta itemprop="url" content="<?php echo esc_url($product_url); ?>">
                                 </div>
 
                                 <!-- أزرار الإجراءات -->
@@ -294,18 +324,21 @@ if (!empty($products)) {
                                     ob_start();
                                     woocommerce_template_loop_add_to_cart();
                                     $add_to_cart_html = ob_get_clean();
-                                    echo $add_to_cart_html;
+                                    echo $add_to_cart_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- WooCommerce handles its own escaping
                                     ?>
 
                                     <!-- ✅ زر واتساب الخاص بالمنتج (مع تتبع النقرات) -->
                                     <?php if ($has_whatsapp && !empty($wa_number_clean)) :
                                         $product_name = $wc_p->get_name();
-                                        $whatsapp_msg = rawurlencode(sprintf(
-                                            __('مرحباً، أريد الاستفسار عن منتج "%s" من متجر %s: %s', 'vmp'),
-                                            $product_name,
-                                            $vendor->store_name,
-                                            $product_url
-                                        ));
+                                        $whatsapp_msg = rawurlencode(
+                                            sprintf(
+                                                /* translators: 1: product name, 2: store name, 3: product URL */
+                                                __('مرحباً، أريد الاستفسار عن منتج "%1$s" من متجر %2$s: %3$s', 'vmp'),
+                                                $product_name,
+                                                $vendor_name,
+                                                $product_url
+                                            )
+                                        );
                                         $wa_url = 'https://wa.me/' . $wa_number_clean . '?text=' . $whatsapp_msg;
                                     ?>
                                         <a href="<?php echo esc_url($wa_url); ?>" 
@@ -315,35 +348,37 @@ if (!empty($products)) {
                                            data-vendor-id="<?php echo (int) $vendor->id; ?>" 
                                            data-product-id="<?php echo (int) $p->product_id; ?>" 
                                            data-click-type="product">
-                                            💬 <?php _e('طلب عبر واتساب', 'vmp'); ?>
+                                            💬 <?php echo esc_html__('طلب عبر واتساب', 'vmp'); ?>
                                         </a>
                                     <?php endif; ?>
                                 </div>
                             </div>
                         </div>
                     <?php 
-                        // إعادة تعيين $product بأمان
-                        if (function_exists('wc_reset_loop')) {
-                            wc_reset_loop();
-                        }
+                        // ✅ إعادة تعيين $product داخل loop فقط (بدون wc_reset_loop هنا)
                         $product = $old_product;
                     endforeach; 
+
+                    // ✅ إعادة تعيين loop WooCommerce مرة واحدة بعد انتهاء loop كل المنتجات
+                    if (function_exists('wc_reset_loop')) {
+                        wc_reset_loop();
+                    }
                     ?>
                 <?php endif; ?>
             </div>
 
-            <?php do_action('woocommerce_after_shop_loop'); ?>
+            <?php do_action('vmp_after_store_products', $vendor, $products); ?>
 
             <!-- الترقيم -->
             <?php if ($pages > 1) : ?>
                 <div class="vmp-pagination">
                     <?php 
-                    $current_page = $paged;
-                    $base = trailingslashit(get_permalink()) . '%_%';
+                    $current_page = max(1, (int) $paged);
+                    $pagination_base = trailingslashit($store_page_url) . '%_%';
                     $format = 'page/%#%/';
                     
                     echo paginate_links([
-                        'base'      => $base,
+                        'base'      => $pagination_base,
                         'format'    => $format,
                         'current'   => $current_page,
                         'total'     => $pages,
@@ -358,379 +393,16 @@ if (!empty($products)) {
         <!-- ════════════════════════════════════════════════ -->
         <!-- Schema: AggregateRating -->
         <!-- ════════════════════════════════════════════════ -->
-        <?php if (!empty($vendor->rating) && $vendor->rating > 0) : ?>
+        <?php if (!empty($vendor->rating) && $vendor->rating > 0 && !empty($vendor->review_count)) : ?>
             <div itemscope itemtype="https://schema.org/AggregateRating" style="display:none;">
                 <meta itemprop="ratingValue" content="<?php echo (float) $vendor->rating; ?>">
                 <meta itemprop="reviewCount" content="<?php echo (int) $vendor->review_count; ?>">
+                <meta itemprop="bestRating" content="5">
+                <meta itemprop="worstRating" content="1">
             </div>
         <?php endif; ?>
 
     </div>
 </div>
 
-<style>
-/* ════════════════════════════════════════════════════════════════════
-   Vendor Marketplace — Store Page Styles
-   ════════════════════════════════════════════════════════════════════ */
 
-.vmp-store-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-}
-
-.vmp-store-cover {
-    position: relative;
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 30px;
-}
-.vmp-store-cover-img {
-    width: 100%;
-    height: 260px;
-    object-fit: cover;
-}
-.vmp-store-cover-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 70%);
-    display: flex;
-    align-items: flex-end;
-    padding: 30px;
-}
-.vmp-store-cover-content {
-    color: #fff;
-}
-.vmp-store-title {
-    font-size: 28px;
-    font-weight: 800;
-    margin: 0;
-}
-.vmp-store-desc {
-    font-size: 14px;
-    opacity: 0.9;
-    max-width: 600px;
-    margin: 6px 0 0;
-}
-
-.vmp-store-info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin-bottom: 40px;
-}
-.vmp-store-info-card {
-    background: var(--vmp-surface);
-    border: 1px solid var(--vmp-border);
-    border-radius: 16px;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    align-items: center;
-}
-.vmp-store-logo-wrap {
-    display: flex;
-    justify-content: center;
-}
-.vmp-store-logo-img {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 4px solid var(--vmp-primary-light);
-}
-.vmp-store-contact,
-.vmp-store-address {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-}
-.vmp-store-contact a {
-    color: var(--vmp-primary);
-    text-decoration: none;
-}
-.vmp-store-contact a:hover {
-    text-decoration: underline;
-}
-.vmp-store-map iframe {
-    width: 100%;
-    height: 180px;
-    border: 0;
-    border-radius: 12px;
-    margin-top: 6px;
-}
-
-.vmp-store-social {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 4px;
-}
-.vmp-social-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--vmp-bg);
-    font-size: 18px;
-    text-decoration: none;
-    transition: 0.2s;
-}
-.vmp-social-btn.fb:hover {
-    background: #1877f2;
-    color: #fff;
-}
-.vmp-social-btn.ig:hover {
-    background: #e4405f;
-    color: #fff;
-}
-.vmp-social-btn.tw:hover {
-    background: #000;
-    color: #fff;
-}
-.vmp-social-btn.yt:hover {
-    background: #ff0000;
-    color: #fff;
-}
-
-.vmp-whatsapp-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 24px;
-    background: #25D366;
-    color: #fff !important;
-    border-radius: 9999px;
-    font-weight: 700;
-    font-size: 15px;
-    text-decoration: none !important;
-    transition: 0.2s;
-    box-shadow: 0 4px 15px rgba(37, 211, 102, .35);
-}
-.vmp-whatsapp-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(37, 211, 102, .45);
-}
-
-.vmp-store-video {
-    background: var(--vmp-surface);
-    border: 1px solid var(--vmp-border);
-    border-radius: 16px;
-    padding: 24px;
-}
-.vmp-video-wrapper {
-    position: relative;
-    padding-bottom: 56.25%;
-    height: 0;
-    overflow: hidden;
-    border-radius: 12px;
-}
-.vmp-video-wrapper iframe,
-.vmp-video-wrapper video {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: 0;
-}
-
-.vmp-store-products {
-    margin-top: 30px;
-}
-.vmp-products-title {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 20px;
-}
-.vmp-products-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 24px;
-}
-.vmp-product-card {
-    background: var(--vmp-surface);
-    border: 1px solid var(--vmp-border);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: 0.2s;
-}
-.vmp-product-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-}
-.vmp-product-img {
-    width: 100%;
-    aspect-ratio: 4/3;
-    object-fit: cover;
-    display: block;
-}
-.vmp-product-body {
-    padding: 16px;
-}
-.vmp-product-name {
-    font-weight: 700;
-    font-size: 14px;
-    margin: 0 0 4px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-.vmp-product-name a {
-    color: inherit;
-    text-decoration: none;
-}
-.vmp-product-name a:hover {
-    color: var(--vmp-primary);
-}
-
-.vmp-product-vendor {
-    font-size: 12px;
-    color: var(--vmp-text-muted);
-    margin-top: 2px;
-    margin-bottom: 6px;
-}
-.vmp-product-vendor a {
-    color: var(--vmp-primary);
-    text-decoration: none;
-}
-.vmp-product-vendor a:hover {
-    text-decoration: underline;
-}
-
-.vmp-product-price {
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--vmp-primary);
-}
-.vmp-product-price del {
-    font-size: 13px;
-    color: var(--vmp-text-light);
-    font-weight: 400;
-}
-
-.vmp-product-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-}
-.vmp-product-actions .vmp-btn {
-    flex: 1;
-    min-width: 100px;
-    padding: 8px 12px;
-    font-size: 13px;
-    border-radius: 6px;
-    border: none;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    text-align: center;
-    transition: background 0.2s, transform 0.1s;
-}
-.vmp-product-actions .vmp-btn:hover {
-    transform: translateY(-2px);
-}
-.vmp-product-actions .vmp-btn-primary {
-    background: var(--vmp-primary);
-    color: #fff;
-}
-.vmp-product-actions .vmp-btn-primary:hover {
-    background: var(--vmp-primary-dark);
-}
-.vmp-product-actions .vmp-btn-success {
-    background: #25D366;
-    color: #fff;
-}
-.vmp-product-actions .vmp-btn-success:hover {
-    background: #128C7E;
-}
-.vmp-product-actions .add_to_cart_button {
-    background: var(--vmp-primary);
-    color: #fff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.2s;
-    font-size: 13px;
-    text-decoration: none;
-}
-.vmp-product-actions .add_to_cart_button:hover {
-    background: var(--vmp-primary-dark);
-}
-
-.vmp-empty {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--vmp-text-muted);
-}
-
-.vmp-pagination {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 24px;
-}
-.vmp-pagination a,
-.vmp-pagination span {
-    display: inline-block;
-    padding: 8px 14px;
-    border: 1px solid var(--vmp-border);
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--vmp-text-muted);
-    text-decoration: none;
-    transition: 0.2s;
-}
-.vmp-pagination a:hover {
-    background: var(--vmp-primary);
-    color: #fff;
-    border-color: var(--vmp-primary);
-}
-.vmp-pagination .current {
-    background: var(--vmp-primary);
-    color: #fff;
-    border-color: var(--vmp-primary);
-}
-
-@media (max-width: 768px) {
-    .vmp-store-info-grid {
-        grid-template-columns: 1fr;
-    }
-    .vmp-store-cover-img {
-        height: 160px;
-    }
-    .vmp-store-title {
-        font-size: 22px;
-    }
-    .vmp-store-logo-img {
-        width: 70px;
-        height: 70px;
-    }
-    .vmp-products-grid {
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 16px;
-    }
-    .vmp-product-actions {
-        flex-direction: column;
-    }
-    .vmp-product-actions .vmp-btn {
-        min-width: 100%;
-    }
-    .vmp-store-cover-overlay {
-        padding: 16px;
-    }
-    .vmp-whatsapp-btn {
-        font-size: 13px;
-        padding: 10px 18px;
-    }
-}
-</style>

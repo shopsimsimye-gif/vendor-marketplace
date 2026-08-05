@@ -1,18 +1,4 @@
 <?php
-namespace VMP\Http\Controllers\Api;
-
-defined('ABSPATH') || exit;
-
-use VMP\Contracts\VendorRepositoryInterface;
-use VMP\Contracts\ProductRepositoryInterface;
-use VMP\Contracts\OrderRepositoryInterface;
-use VMP\Services\VendorService;
-use VMP\Http\Responses\JsonResponse;
-use VMP\Http\Middleware\RateLimitMiddleware;
-use VMP\Support\Cache\Manager as CacheManager;
-use VMP\Http\Resources\VendorResource;
-use VMP\Http\Resources\OrderResource;
-
 /**
  * VendorApiController — REST API لإدارة البائعين
  *
@@ -25,7 +11,22 @@ use VMP\Http\Resources\OrderResource;
  *  GET  /vendors/me               — بيانات البائع الحالي (مصادق)
  *  GET  /vendors/me/orders        — طلبات البائع الحالي (مصادق)
  *  GET  /vendors/me/stats         — إحصائيات البائع الحالي (مصادق)
+ *
+ * @package VMP\Http\Controllers\Api
+ * @since 3.0.0
  */
+
+namespace VMP\Http\Controllers\Api;
+
+defined('ABSPATH') || exit;
+
+use VMP\Contracts\VendorRepositoryInterface;
+use VMP\Contracts\ProductRepositoryInterface;
+use VMP\Contracts\OrderRepositoryInterface;
+use VMP\Services\VendorService;
+use VMP\Support\Cache\Manager as CacheManager;
+use VMP\Http\Resources\VendorResource;
+
 class VendorApiController
 {
     private const NAMESPACE = 'vmp/v1';
@@ -73,7 +74,7 @@ class VendorApiController
             'args'                => [
                 'id'       => ['type' => 'integer', 'required' => true],
                 'per_page' => ['type' => 'integer', 'default' => 20, 'minimum' => 1, 'maximum' => 100],
-                'page'     => ['type' => 'integer', 'default' => 1],
+                'page'     => ['type' => 'integer', 'default' => 1, 'minimum' => 1],
             ],
         ]);
 
@@ -90,8 +91,8 @@ class VendorApiController
             'callback'            => [$this, 'myOrders'],
             'permission_callback' => [$this, 'requiresVendor'],
             'args'                => [
-                'per_page' => ['type' => 'integer', 'default' => 20],
-                'page'     => ['type' => 'integer', 'default' => 1],
+                'per_page' => ['type' => 'integer', 'default' => 20, 'minimum' => 1, 'maximum' => 100],
+                'page'     => ['type' => 'integer', 'default' => 1, 'minimum' => 1],
                 'status'   => ['type' => 'string', 'default' => ''],
             ],
         ]);
@@ -107,21 +108,33 @@ class VendorApiController
     // ─── Permission Callbacks ────────────────────────────────────────────────
 
     /**
-     * RequiresVendor functionality helper.
+     * التحقق من أن المستخدم بائع معتمد
      *
-     * @param \WP_REST_Request $request Description index.
-     * @return bool| Output payload.
+     * @param \WP_REST_Request $request
+     * @return bool|\WP_Error
      */
-    public function requiresVendor(\WP_REST_Request $request): bool|\WP_Error
+    public function requiresVendor(\WP_REST_Request $request)
     {
         if (!is_user_logged_in()) {
-            return new \WP_Error('unauthorized', __('يجب تسجيل الدخول أولاً.', 'vmp'), ['status' => 401]);
+            return new \WP_Error(
+                'unauthorized',
+                __('يجب تسجيل الدخول أولاً.', 'vmp'),
+                ['status' => 401]
+            );
         }
 
         $vendor = $this->vendorRepository->findByUserId(get_current_user_id());
+
         if (!$vendor || $vendor->status !== 'approved') {
-            return new \WP_Error('forbidden', __('يجب أن تكون بائعاً معتمداً.', 'vmp'), ['status' => 403]);
+            return new \WP_Error(
+                'forbidden',
+                __('يجب أن تكون بائعاً معتمداً.', 'vmp'),
+                ['status' => 403]
+            );
         }
+
+        // ✅ تخزين البائع في الطلب لتجنب تكرار الـ DB query
+        $request->set_param('__vendor', $vendor);
 
         return true;
     }
@@ -129,24 +142,23 @@ class VendorApiController
     // ─── Handlers ────────────────────────────────────────────────────────────
 
     /**
-     * Index functionality helper.
+     * قائمة البائعين المعتمدين
      *
-     * @param \WP_REST_Request $request Description index.
-     * @return mixed Output payload.
+     * @param \WP_REST_Request $request
+     * @return \WP_REST_Response|\WP_Error
      */
-    public function index(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
+    public function index(\WP_REST_Request $request)
     {
         $perPage = (int) $request->get_param('per_page');
         $page    = (int) $request->get_param('page');
         $search  = sanitize_text_field($request->get_param('search'));
         $orderBy = sanitize_key($request->get_param('order_by'));
-
         $offset  = ($page - 1) * $perPage;
 
         $cacheKey = 'api_vendors_' . md5($search . $perPage . $offset . $orderBy);
-        $vendors  = CacheManager::get($cacheKey);
+        $data     = CacheManager::get($cacheKey);
 
-        if ($vendors === false) {
+        if ($data === false) {
             $vendors = $this->vendorRepository->findAll([
                 'status'  => 'approved',
                 'search'  => $search,
@@ -154,59 +166,78 @@ class VendorApiController
                 'offset'  => $offset,
                 'orderby' => $orderBy,
             ]);
-            CacheManager::set($cacheKey, $vendors, 300); // 5 دقائق
+
+            // ✅ تخزين array مُنسق بدلاً من objects
+            $data = array_map(
+                static fn($vendor) => VendorResource::toArray($vendor, false),
+                $vendors
+            );
+
+            CacheManager::set($cacheKey, $data, 300); // 5 دقائق
         }
 
-        $data = array_map([$this, 'formatVendorForApi'], $vendors);
+        // ✅ إجمالي العدد للـ pagination
+        $total = $this->vendorRepository->count(['status' => 'approved', 'search' => $search]);
 
-        return new \WP_REST_Response([
+        $response = new \WP_REST_Response([
             'success' => true,
             'data'    => $data,
             'meta'    => [
-                'page'     => $page,
-                'per_page' => $perPage,
-                'count'    => count($data),
+                'page'        => $page,
+                'per_page'    => $perPage,
+                'total'       => (int) $total,
+                'total_pages' => (int) ceil($total / $perPage),
             ],
         ], 200);
+
+        // ✅ إضافة headers للـ pagination (متوافق مع WP REST API)
+        $response->header('X-WP-Total', (string) $total);
+        $response->header('X-WP-TotalPages', (string) ceil($total / $perPage));
+
+        return $response;
     }
 
     /**
-     * Show functionality helper.
+     * بيانات بائع محدد
      *
-     * @param \WP_REST_Request $request Description index.
-     * @return mixed Output payload.
+     * @param \WP_REST_Request $request
+     * @return \WP_REST_Response|\WP_Error
      */
-    public function show(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
+    public function show(\WP_REST_Request $request)
     {
         $id = (int) $request->get_param('id');
 
         $cacheKey = 'api_vendor_' . $id;
-        $vendor   = CacheManager::get($cacheKey);
+        $data     = CacheManager::get($cacheKey);
 
-        if ($vendor === false) {
+        if ($data === false) {
             $vendor = $this->vendorRepository->find($id);
-            if ($vendor) {
-                CacheManager::set($cacheKey, $vendor, 600);
-            }
-        }
 
-        if (!$vendor || $vendor->status !== 'approved') {
-            return new \WP_Error('not_found', __('البائع غير موجود.', 'vmp'), ['status' => 404]);
+            if (!$vendor || $vendor->status !== 'approved') {
+                return new \WP_Error(
+                    'not_found',
+                    __('البائع غير موجود.', 'vmp'),
+                    ['status' => 404]
+                );
+            }
+
+            $data = VendorResource::toArray($vendor, false);
+            CacheManager::set($cacheKey, $data, 600); // 10 دقائق
         }
 
         return new \WP_REST_Response([
             'success' => true,
-            'data'    => VendorResource::toArray($vendor, false),
+            'data'    => $data,
         ], 200);
     }
 
     /**
-     * Products functionality helper.
+     * منتجات بائع محدد
      *
-     * @param \WP_REST_Request $request Description index.
-     * @return mixed Output payload.
+     * @param \WP_REST_Request $request
+     * @return \WP_REST_Response|\WP_Error
      */
-    public function products(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
+    public function products(\WP_REST_Request $request)
     {
         $vendorId = (int) $request->get_param('id');
         $perPage  = (int) $request->get_param('per_page');
@@ -215,7 +246,11 @@ class VendorApiController
 
         $vendor = $this->vendorRepository->find($vendorId);
         if (!$vendor || $vendor->status !== 'approved') {
-            return new \WP_Error('not_found', __('البائع غير موجود.', 'vmp'), ['status' => 404]);
+            return new \WP_Error(
+                'not_found',
+                __('البائع غير موجود.', 'vmp'),
+                ['status' => 404]
+            );
         }
 
         $products = $this->productRepository->findByVendor($vendorId, [
@@ -224,26 +259,44 @@ class VendorApiController
             'offset' => $offset,
         ]);
 
+        $total = $this->productRepository->countByVendor($vendorId, 'approved');
+
         $data = array_map([$this, 'formatProductForApi'], $products);
 
-        return new \WP_REST_Response([
+        $response = new \WP_REST_Response([
             'success' => true,
             'data'    => $data,
-            'meta'    => ['page' => $page, 'per_page' => $perPage, 'count' => count($data)],
+            'meta'    => [
+                'page'        => $page,
+                'per_page'    => $perPage,
+                'total'       => (int) $total,
+                'total_pages' => (int) ceil($total / $perPage),
+            ],
         ], 200);
+
+        $response->header('X-WP-Total', (string) $total);
+        $response->header('X-WP-TotalPages', (string) ceil($total / $perPage));
+
+        return $response;
     }
 
     /**
-     * Me functionality helper.
+     * بيانات البائع الحالي
      *
-     * @param \WP_REST_Request $request Description index.
-     * @return mixed Output payload.
+     * @param \WP_REST_Request $request
+     * @return \WP_REST_Response|\WP_Error
      */
-    public function me(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
+    public function me(\WP_REST_Request $request)
     {
-        $vendor = $this->vendorRepository->findByUserId(get_current_user_id());
+        // ✅ استخدام البائع المُخزن في الطلب (من requiresVendor)
+        $vendor = $request->get_param('__vendor');
+
         if (!$vendor) {
-            return new \WP_Error('not_found', __('لم يُعثر على بيانات البائع.', 'vmp'), ['status' => 404]);
+            return new \WP_Error(
+                'not_found',
+                __('لم يُعثر على بيانات البائع.', 'vmp'),
+                ['status' => 404]
+            );
         }
 
         return new \WP_REST_Response([
@@ -253,42 +306,64 @@ class VendorApiController
     }
 
     /**
-     * MyOrders functionality helper.
+     * طلبات البائع الحالي
      *
-     * @param \WP_REST_Request $request Description index.
-     * @return mixed Output payload.
+     * @param \WP_REST_Request $request
+     * @return \WP_REST_Response|\WP_Error
      */
-    public function myOrders(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
+    public function myOrders(\WP_REST_Request $request)
     {
-        $vendor  = $this->vendorRepository->findByUserId(get_current_user_id());
+        $vendor  = $request->get_param('__vendor');
+        if (!$vendor) {
+            return new \WP_Error('not_found', __('لم يُعثر على بيانات البائع.', 'vmp'), ['status' => 404]);
+        }
+
         $perPage = (int) $request->get_param('per_page');
         $page    = (int) $request->get_param('page');
         $status  = sanitize_key($request->get_param('status'));
         $offset  = ($page - 1) * $perPage;
 
         $args = ['limit' => $perPage, 'offset' => $offset];
-        if ($status) $args['status'] = $status;
+        if ($status) {
+            $args['status'] = $status;
+        }
 
         $orders = $this->orderRepository->findByVendor($vendor->id, $args);
-        $data   = array_map([$this, 'formatOrderForApi'], $orders);
+        $total  = $this->orderRepository->countByVendor($vendor->id, $status ?: null);
 
-        return new \WP_REST_Response([
+        $data = array_map([$this, 'formatOrderForApi'], $orders);
+
+        $response = new \WP_REST_Response([
             'success' => true,
             'data'    => $data,
-            'meta'    => ['page' => $page, 'per_page' => $perPage, 'count' => count($data)],
+            'meta'    => [
+                'page'        => $page,
+                'per_page'    => $perPage,
+                'total'       => (int) $total,
+                'total_pages' => (int) ceil($total / $perPage),
+            ],
         ], 200);
+
+        $response->header('X-WP-Total', (string) $total);
+        $response->header('X-WP-TotalPages', (string) ceil($total / $perPage));
+
+        return $response;
     }
 
     /**
-     * MyStats functionality helper.
+     * إحصائيات البائع الحالي
      *
-     * @param \WP_REST_Request $request Description index.
-     * @return mixed Output payload.
+     * @param \WP_REST_Request $request
+     * @return \WP_REST_Response|\WP_Error
      */
-    public function myStats(\WP_REST_Request $request): \WP_REST_Response|\WP_Error
+    public function myStats(\WP_REST_Request $request)
     {
-        $vendor = $this->vendorRepository->findByUserId(get_current_user_id());
-        $stats  = $this->vendorService->getVendorStats($vendor->id);
+        $vendor = $request->get_param('__vendor');
+        if (!$vendor) {
+            return new \WP_Error('not_found', __('لم يُعثر على بيانات البائع.', 'vmp'), ['status' => 404]);
+        }
+
+        $stats = $this->vendorService->getVendorStats($vendor->id);
 
         return new \WP_REST_Response([
             'success' => true,
@@ -299,85 +374,100 @@ class VendorApiController
     // ─── Formatters ─────────────────────────────────────────────────────────
 
     /**
-     * FormatVendorForApi functionality helper.
+     * تنسيق منتج للـ API
      *
-     * @param object $vendor Description index.
-     * @param bool $includePrivate Description index.
-     * @return array Output payload.
-     */
-    private function formatVendorForApi(object $vendor, bool $includePrivate = false): array
-    {
-        $data = [
-            'id'          => (int) $vendor->id,
-            'store_name'  => esc_html($vendor->store_name ?? ''),
-            'store_slug'  => esc_attr($vendor->store_slug ?? ''),
-            'description' => wp_kses_post($vendor->store_description ?? ''),
-            'store_url'   => esc_url(home_url('/store/' . ($vendor->store_slug ?? ''))),
-            'logo_url'    => $this->getAttachmentUrl((int) ($vendor->store_logo ?? 0), 'thumbnail'),
-            'rating'      => (float) ($vendor->rating ?? 0),
-            'is_trusted'  => !empty($vendor->is_trusted),
-        ];
-
-        if ($includePrivate) {
-            $data['balance']             = (float) ($vendor->balance ?? 0);
-            $data['total_products']      = (int) ($vendor->total_products ?? 0);
-            $data['total_orders']        = (int) ($vendor->total_orders ?? 0);
-            $data['subscription_plan']   = esc_html($vendor->subscription_plan ?? '');
-            $data['subscription_status'] = esc_html($vendor->subscription_status ?? '');
-            $data['subscription_expiry'] = $vendor->subscription_expiry ?? null;
-        }
-
-        return $data;
-    }
-
-    /**
-     * FormatProductForApi functionality helper.
-     *
-     * @param object $product Description index.
-     * @return array Output payload.
+     * @param object $product
+     * @return array
      */
     private function formatProductForApi(object $product): array
     {
+        $productId = (int) ($product->product_id ?? $product->id ?? 0);
+
+        // ✅ استخدام wc_get_product بدلاً من get_the_title (أكثر أماناً في REST context)
+        $wcProduct = $productId > 0 ? wc_get_product($productId) : null;
+        $title     = $wcProduct ? $wcProduct->get_name() : ($product->title ?? '');
+
+        $price = (float) ($product->price ?? 0);
+
         return [
-            'id'            => (int) ($product->product_id ?? $product->id ?? 0),
-            'title'         => esc_html(get_the_title($product->product_id ?? 0) ?: ($product->title ?? '')),
-            'price'         => function_exists('wc_price') ? wc_price((float) ($product->price ?? 0)) : (float) ($product->price ?? 0),
-            'price_raw'     => (float) ($product->price ?? 0),
-            'status'        => esc_attr($product->status ?? ''),
-            'stock_status'  => esc_attr($product->stock_status ?? 'instock'),
-            'image_url'     => $this->getAttachmentUrl((int) (get_post_thumbnail_id($product->product_id ?? 0)), 'woocommerce_thumbnail'),
+            'id'           => $productId,
+            'title'        => (string) $title,
+            'price'        => $price,
+            'price_html'   => function_exists('wc_price') ? wc_price($price) : null,
+            'status'       => (string) ($product->status ?? ''),
+            'stock_status' => (string) ($product->stock_status ?? 'instock'),
+            'image_url'    => $this->getAttachmentUrl(
+                (int) ($wcProduct ? $wcProduct->get_image_id() : get_post_thumbnail_id($productId)),
+                'woocommerce_thumbnail'
+            ),
         ];
     }
 
     /**
-     * FormatOrderForApi functionality helper.
+     * تنسيق طلب للـ API
      *
-     * @param object $order Description index.
-     * @return array Output payload.
+     * @param object $order
+     * @return array
      */
     private function formatOrderForApi(object $order): array
     {
         return [
             'id'              => (int) ($order->id ?? 0),
             'parent_order_id' => (int) ($order->parent_order_id ?? 0),
-            'status'          => esc_attr($order->status ?? ''),
+            'status'          => (string) ($order->status ?? ''),
             'total'           => (float) ($order->total ?? 0),
             'vendor_earnings' => (float) ($order->vendor_earnings ?? 0),
-            'created_at'      => $order->created_at ?? null,
+            'created_at'      => !empty($order->created_at)
+                ? date('c', strtotime((string) $order->created_at))
+                : null,
         ];
     }
 
     /**
-     * GetAttachmentUrl functionality helper.
+     * الحصول على رابط مرفق
      *
-     * @param int $attachmentId Description index.
-     * @param string $size Description index.
-     * @return string Output payload.
+     * @param int    $attachmentId
+     * @param string $size
+     * @return string
      */
     private function getAttachmentUrl(int $attachmentId, string $size = 'thumbnail'): string
     {
-        if ($attachmentId <= 0) return '';
+        if ($attachmentId <= 0) {
+            return '';
+        }
         $url = wp_get_attachment_image_url($attachmentId, $size);
-        return $url ? esc_url($url) : '';
+        return $url ? (string) $url : '';
+    }
+
+    // ─── Cache Invalidation Helpers ─────────────────────────────────────────
+
+    /**
+     * مسح cache بائع محدد
+     *
+     * @param int $vendorId
+     * @return void
+     */
+    public static function clearVendorCache(int $vendorId): void
+    {
+        CacheManager::delete('api_vendor_' . $vendorId);
+        CacheManager::delete('api_vendors_'); // wildcard delete إن كان مدعوماً
+    }
+
+    /**
+     * مسح cache قائمة البائعين
+     *
+     * @return void
+     */
+    public static function clearVendorsListCache(): void
+    {
+        // ✅ يفترض أن CacheManager يدعم delete by pattern أو prefix
+        // إذا لم يكن مدعوماً، استخدم transient keys معروفة
+        global $wpdb;
+        $wpdb->query(
+            "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_api_vendors_%'"
+        );
+        $wpdb->query(
+            "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_api_vendors_%'"
+        );
     }
 }

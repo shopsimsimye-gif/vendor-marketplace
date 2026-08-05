@@ -24,29 +24,6 @@ class AdminServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // ── ضمان وجود صلاحيات VMP لدى Administrator (يعمل في كل تحميل) ──
-        add_action('init', static function (): void {
-            $admin_role = get_role('administrator');
-            if (!$admin_role) {
-                return;
-            }
-            $vmp_caps = [
-                'vmp_manage_vendors',
-                'vmp_manage_products',
-                'vmp_manage_orders',
-                'vmp_manage_commissions',
-                'vmp_manage_withdrawals',
-                'vmp_manage_reports',
-                'vmp_manage_settings',
-                'vmp_manage_subscriptions',
-                'manage_vmp_requests',
-            ];
-            foreach ($vmp_caps as $cap) {
-                if (!$admin_role->has_cap($cap)) {
-                    $admin_role->add_cap($cap);
-                }
-            }
-        }, 1);
 
         // ── تهيئة صفحة طلبات البائعين (class-based admin page) ──
         // ننشئ instance لتسجيل هوكات admin_menu, admin_enqueue_scripts, wp_ajax

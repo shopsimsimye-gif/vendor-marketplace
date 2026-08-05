@@ -4,11 +4,14 @@ namespace VMP\Http\Requests;
 defined('ABSPATH') || exit;
 
 use VMP\Contracts\OrderRepositoryInterface;
+use VMP\Contracts\VendorRepositoryInterface;
 
 /**
  * Class GetOrderDetailsRequest
  *
- * Description of administrative platform component GetOrderDetailsRequest.
+ * ✅ يسمح للمدير أو للبائع صاحب الطلب فقط
+ * ✅ لا يستخدم $_POST مباشرة
+ * ✅ يستخدم Repository بدلاً من استعلام DB مباشر
  *
  * @package vendor-marketplace
  */
@@ -17,14 +20,11 @@ class GetOrderDetailsRequest extends AbstractRequest
     /**
      * Authorize functionality helper.
      *
-     * ✅ يسمح للأدمن أو للبائع الذي يملك الطلب (وليس فقط للأدمن)
-     * ✅ يمنع البائع من جلب تفاصيل طلبات الآخرين (إصلاح ثغرة أمنية)
-     *
      * @return bool Output payload.
      */
     public function authorize(): bool
     {
-        // الأدمن يملك الصلاحية دائماً
+        // المدير يملك الصلاحية دائماً
         if (current_user_can('vmp_manage_orders')) {
             return true;
         }
@@ -34,31 +34,26 @@ class GetOrderDetailsRequest extends AbstractRequest
             return false;
         }
 
-        // البائع: يجب أن يملك الطلب
-        $vendorOrderId = (int) ($_POST['vendor_order_id'] ?? 0);
-        if (!$vendorOrderId) {
+        $vendorOrderId = (int) $this->input('vendor_order_id', 0);
+        if ($vendorOrderId <= 0) {
             return false;
         }
 
-        $vendorId = (int) get_user_meta($userId, 'vmp_vendor_id', true);
-        if (!$vendorId) {
-            // Fallback: البحث عن البائع عبر الجدول
-            global $wpdb;
-            $vendorId = (int) $wpdb->get_var($wpdb->prepare(
-                "SELECT id FROM {$wpdb->prefix}vmp_vendors WHERE user_id = %d LIMIT 1",
-                $userId
-            ));
-        }
+        // جلب البائع عبر Repository (بدلاً من استعلام DB مباشر)
+        /** @var VendorRepositoryInterface $vendorRepo */
+        $vendorRepo = \VMP\Core\Container::getInstance()->make(VendorRepositoryInterface::class);
+        $vendor = $vendorRepo->findByUserId($userId);
 
-        if (!$vendorId) {
+        if (!$vendor || $vendor->id <= 0) {
             return false;
         }
 
+        // التحقق من ملكية الطلب
         /** @var OrderRepositoryInterface $orderRepo */
         $orderRepo = \VMP\Core\Container::getInstance()->make(OrderRepositoryInterface::class);
         $order = $orderRepo->find($vendorOrderId);
 
-        return $order && (int) $order->vendor_id === $vendorId;
+        return $order && (int) $order->vendor_id === (int) $vendor->id;
     }
 
     /**
@@ -69,7 +64,7 @@ class GetOrderDetailsRequest extends AbstractRequest
     protected function rules(): array
     {
         return [
-            'vendor_order_id' => ['required', 'integer'],
+            'vendor_order_id' => ['required', 'integer', 'min:1'],
         ];
     }
 

@@ -113,7 +113,9 @@ class VendorHooks extends AbstractModule
 
         $user = wp_get_current_user();
 
-        if (in_array('administrator', (array) $user->roles) || current_user_can('manage_options')) {
+        if (in_array('administrator', (array) $user->roles)
+            || in_array('shop_manager', (array) $user->roles)
+            || current_user_can('manage_options')) {
             return;
         }
 
@@ -188,7 +190,9 @@ class VendorHooks extends AbstractModule
         }
 
         $user = wp_get_current_user();
-        if (in_array('administrator', (array) $user->roles) || current_user_can('manage_options')) {
+        if (in_array('administrator', (array) $user->roles)
+            || in_array('shop_manager', (array) $user->roles)
+            || current_user_can('manage_options')) {
             return;
         }
 

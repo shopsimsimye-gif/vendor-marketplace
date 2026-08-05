@@ -6,7 +6,8 @@ defined('ABSPATH') || exit;
 /**
  * Class GetWhatsappStatsRequest
  *
- * Description of administrative platform component GetWhatsappStatsRequest.
+ * ✅ صلاحية محددة بدلاً من is_user_logged_in فقط
+ * ✅ قيم period محددة
  *
  * @package vendor-marketplace
  */
@@ -19,7 +20,9 @@ class GetWhatsappStatsRequest extends AbstractRequest
      */
     public function authorize(): bool
     {
-        return is_user_logged_in();
+        return current_user_can('vmp_view_whatsapp_stats')
+            || current_user_can('vmp_vendor_stats')
+            || current_user_can('vmp_manage_orders');
     }
 
     /**
@@ -30,7 +33,19 @@ class GetWhatsappStatsRequest extends AbstractRequest
     protected function rules(): array
     {
         return [
-            'period' => ['string'],
+            'period' => ['string', 'in:day,week,month,year'],
+        ];
+    }
+
+    /**
+     * Attributes functionality helper.
+     *
+     * @return array Output payload.
+     */
+    protected function attributes(): array
+    {
+        return [
+            'period' => __('الفترة الزمنية', 'vmp'),
         ];
     }
 
@@ -42,9 +57,11 @@ class GetWhatsappStatsRequest extends AbstractRequest
     public function validated(): array
     {
         $data = parent::validated();
+
         if (empty($data['period'])) {
             $data['period'] = 'month';
         }
+
         return $data;
     }
 }

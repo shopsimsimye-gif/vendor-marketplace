@@ -45,7 +45,10 @@ use VMP\Controllers\WithdrawalController;
 use VMP\Controllers\WhatsappController;
 use VMP\Controllers\VendorRegistrationController;
 use VMP\Controllers\AiSettingsController;
+use VMP\Modules\AI\Controllers\AIProductController;
 use VMP\Controllers\TemplateController;
+use VMP\Controllers\ReportController;
+use VMP\Controllers\SettingsController;
 
 /**
  * Class CoreServiceProvider
@@ -383,8 +386,34 @@ class CoreServiceProvider extends ServiceProvider
         $registry->ajax('vmp_admin_save_ai_settings', AiSettingsController::class, 'save',           false, 'vmp_admin_nonce');
         $registry->ajax('vmp_ai_test_connection',      AiSettingsController::class, 'testConnection', false, 'vmp_admin_nonce');
 
+        // ─── AI Product Routes (نُقلت من add_action المباشر في AIServiceProvider إلى RouteRegistry — [QA 2026-08-05]) ───
+        // الدوال تتحقق داخلياً عبر check_ajax_referer('vmp_public_nonce', 'nonce', false) — لذا نمرر نفس الـ nonce للتوثيق.
+        $registry->ajax('vmp_ai_create_product_from_image', AIProductController::class, 'createJob',      false, 'vmp_public_nonce', 'nonce');
+        $registry->ajax('vmp_ai_get_product_job',           AIProductController::class, 'getJob',         false, 'vmp_public_nonce', 'nonce');
+        $registry->ajax('vmp_ai_get_job_timeline',          AIProductController::class, 'getJobTimeline', false, 'vmp_public_nonce', 'nonce');
+        $registry->ajax('vmp_ai_regenerate_product_part',   AIProductController::class, 'regenerate',     false, 'vmp_public_nonce', 'nonce');
+        $registry->ajax('vmp_ai_publish_product_draft',     AIProductController::class, 'publish',        false, 'vmp_public_nonce', 'nonce');
+
         // ─── Template Routes (نُقلت من VMP\Modules\Template add_action إلى Controller — [QA 2026-08-02]) ───
         $registry->ajax('vmp_save_template',          TemplateController::class, 'saveTemplate',      false, 'vmp_public_nonce');
+        // ─── Report Routes (نُقلت من VMP\Modules\Report add_action إلى ReportController — [QA 2026-08-05] Phase B) ───
+        // Request classes تتحقق من nonce (عبر AbstractRequest::fromPost) بالإضافة إلى authorize (الصلاحية).
+        $registry->ajax('vmp_vendor_summary',     ReportController::class, 'vendorSummary',     false, 'vmp_public_nonce', 'nonce');
+        $registry->ajax('vmp_vendor_report',      ReportController::class, 'vendorReport',      false, 'vmp_public_nonce', 'nonce');
+        $registry->ajax('vmp_vendor_chart',       ReportController::class, 'vendorChart',       false, 'vmp_public_nonce', 'nonce');
+        $registry->ajax('vmp_admin_report',       ReportController::class, 'adminReport',       false, 'vmp_admin_nonce', 'nonce');
+        $registry->ajax('vmp_admin_chart',        ReportController::class, 'adminChart',        false, 'vmp_admin_nonce', 'nonce');
+        $registry->ajax('vmp_admin_top_vendors',  ReportController::class, 'adminTopVendors',   false, 'vmp_admin_nonce', 'nonce');
+
+        // ─── Settings Routes (نُقلت من VMP\Modules\Settings add_action إلى SettingsController — [QA 2026-08-05] Phase C) ───
+        // Admin: nonce vmp_admin_nonce؛ الإشعارات: vmp_public_nonce؛ اختبار البريد: vmp_test_email_nonce.
+        // حقل nonce في جميعها = 'nonce' (كما ترسله الواجهات).
+        $registry->ajax('vmp_admin_save_settings',      SettingsController::class, 'saveSettings',      false, 'vmp_admin_nonce',     'nonce');
+        $registry->ajax('vmp_admin_get_settings',       SettingsController::class, 'getSettings',       false, 'vmp_admin_nonce',     'nonce');
+        $registry->ajax('vmp_mark_notice_read',         SettingsController::class, 'markNoticeRead',    false, 'vmp_public_nonce',    'nonce');
+        $registry->ajax('vmp_mark_all_notices_read',    SettingsController::class, 'markAllNoticesRead',false, 'vmp_public_nonce',    'nonce');
+        $registry->ajax('vmp_test_email',               SettingsController::class, 'testEmail',         false, 'vmp_test_email_nonce','nonce');
+
         $registry->ajax('vmp_get_template_settings',  TemplateController::class, 'getTemplateSettings', false, 'vmp_public_nonce');
         $registry->ajax('vmp_get_templates_list',     TemplateController::class, 'getTemplatesList',  false, 'vmp_public_nonce');
 

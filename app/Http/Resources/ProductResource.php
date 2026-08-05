@@ -1,39 +1,70 @@
 <?php
+/**
+ * ProductResource — تحويل بيانات المنتج لـ API (raw data)
+ *
+ * @package VMP\Http\Resources
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\Resources;
 
 defined('ABSPATH') || exit;
 
-/**
- * Product Resource — explicit allow-list for API responses.
- */
 class ProductResource
 {
     /**
-     * Transform product object into API-safe array.
+     * تحويل كائن المنتج إلى array للـ API
      *
-     * @param object $product Raw product object.
+     * @param object $product كائن المنتج من DB
      * @return array
      */
     public static function toArray(object $product): array
     {
+        $productId = (int) ($product->product_id ?? $product->id ?? 0);
+
+        // ✅ استخدام wc_get_product بدلاً من get_the_title (أكثر أماناً في REST)
+        $wcProduct = $productId > 0 ? wc_get_product($productId) : null;
+        $title     = $wcProduct ? $wcProduct->get_name() : ($product->title ?? '');
+        $slug      = $wcProduct ? $wcProduct->get_slug() : ($product->slug ?? '');
+
+        $price = (float) ($product->price ?? ($wcProduct ? $wcProduct->get_price() : 0));
+
         return [
-            'id'           => (int) ($product->product_id ?? $product->id ?? 0),
-            'title'        => esc_html(get_the_title($product->product_id ?? 0) ?: ($product->title ?? '')),
-            'slug'         => esc_attr(get_post_field('post_name', $product->product_id ?? 0) ?: ''),
-            'price'        => function_exists('wc_price') ? wc_price((float) ($product->price ?? 0)) : (float) ($product->price ?? 0),
-            'price_raw'    => (float) ($product->price ?? 0),
-            'status'       => esc_attr($product->status ?? ''),
-            'stock_status' => esc_attr($product->stock_status ?? 'instock'),
-            'image_url'    => esc_url(wp_get_attachment_image_url(get_post_thumbnail_id($product->product_id ?? 0), 'woocommerce_thumbnail') ?: ''),
-            'permalink'    => esc_url(get_permalink($product->product_id ?? 0) ?: ''),
+            'id'           => $productId,
+            'title'        => (string) $title,
+            'slug'         => (string) $slug,
+            'price'        => $price,
+            'price_html'   => function_exists('wc_price') ? wc_price($price) : null,
+            'status'       => (string) ($product->status ?? ($wcProduct ? $wcProduct->get_status() : 'draft')),
+            'stock_status' => (string) ($product->stock_status ?? ($wcProduct ? $wcProduct->get_stock_status() : 'instock')),
+            'image_url'    => self::getImageUrl($productId, $wcProduct),
+            'permalink'    => $productId > 0 ? (string) get_permalink($productId) : '',
         ];
     }
 
     /**
-     * Transform a collection of products.
+     * تحويل مجموعة من المنتجات
      */
     public static function collection(array $products): array
     {
-        return array_map(fn($p) => self::toArray($p), $products);
+        return array_map(static fn($p) => self::toArray($p), $products);
+    }
+
+    /**
+     * رابط صورة المنتج
+     */
+    private static function getImageUrl(int $productId, $wcProduct = null): string
+    {
+        if (!$productId) {
+            return '';
+        }
+
+        $imageId = $wcProduct ? $wcProduct->get_image_id() : get_post_thumbnail_id($productId);
+        if (!$imageId) {
+            return '';
+        }
+
+        $url = wp_get_attachment_image_url((int) $imageId, 'woocommerce_thumbnail');
+        return $url ? (string) $url : '';
     }
 }

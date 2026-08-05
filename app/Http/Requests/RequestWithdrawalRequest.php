@@ -3,12 +3,8 @@ namespace VMP\Http\Requests;
 
 defined('ABSPATH') || exit;
 
-// Withdrawal Requests
-
 /**
  * Class RequestWithdrawalRequest
- *
- * Description of administrative platform component RequestWithdrawalRequest.
  *
  * @package vendor-marketplace
  */
@@ -32,10 +28,10 @@ class RequestWithdrawalRequest extends AbstractRequest
     protected function rules(): array
     {
         return [
-            'amount'         => ['required', 'numeric'],
-            'method'         => ['string'],
+            'amount'         => ['required', 'numeric', 'min:0.01'],
+            'method'         => ['required', 'string', 'in:bank,paypal,crypto'],
             // [QA 2026-08-02] method_details: array اختياري — يُعقَّم داخل WithdrawalService
-            'method_details' => ['array'],
+            'method_details' => ['nullable', 'array'],
         ];
     }
 
@@ -47,8 +43,9 @@ class RequestWithdrawalRequest extends AbstractRequest
     protected function attributes(): array
     {
         return [
-            'amount' => __('مبلغ السحب', 'vmp'),
-            'method' => __('طريقة السحب', 'vmp'),
+            'amount'         => __('مبلغ السحب', 'vmp'),
+            'method'         => __('طريقة السحب', 'vmp'),
+            'method_details' => __('تفاصيل الطريقة', 'vmp'),
         ];
     }
 }

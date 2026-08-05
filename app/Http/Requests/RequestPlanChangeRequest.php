@@ -6,8 +6,6 @@ defined('ABSPATH') || exit;
 /**
  * Class RequestPlanChangeRequest
  *
- * Description of administrative platform component RequestPlanChangeRequest.
- *
  * @package vendor-marketplace
  */
 class RequestPlanChangeRequest extends AbstractRequest
@@ -19,7 +17,8 @@ class RequestPlanChangeRequest extends AbstractRequest
      */
     public function authorize(): bool
     {
-        return is_user_logged_in();
+        return current_user_can('vmp_vendor') 
+            || current_user_can('vmp_manage_subscriptions');
     }
 
     /**
@@ -30,7 +29,7 @@ class RequestPlanChangeRequest extends AbstractRequest
     protected function rules(): array
     {
         return [
-            'plan_id' => ['required', 'integer'],
+            'plan_id' => ['required', 'integer', 'min:1'],
         ];
     }
 

@@ -1,15 +1,15 @@
 <?php
+/**
+ * PaginatedResponse — استجابة مع ترقيم
+ *
+ * @package VMP\Http\Responses
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\Responses;
 
 defined('ABSPATH') || exit;
 
-/**
- * Class PaginatedResponse
- *
- * Description of administrative platform component PaginatedResponse.
- *
- * @package vendor-marketplace
- */
 class PaginatedResponse extends SuccessResponse
 {
     public function __construct(

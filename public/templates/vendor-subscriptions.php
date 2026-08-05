@@ -53,14 +53,28 @@ $nav_file = VMP_PLUGIN_DIR . 'public/templates/partials/vendor-nav.php';
         <?php if ($active_sub) :
             $current_plan = $plan_repo->find((int) $active_sub->plan_id);
             $end_date = !empty($active_sub->end_date) ? date_i18n('Y-m-d', strtotime($active_sub->end_date)) : '-';
+            $is_free_plan = $current_plan && ((float) $current_plan->price == 0);
         ?>
-            <div class="vmp-notice vmp-notice-success">
-                <?php printf(
-                    __('اشتراكك الحالي: <strong>%s</strong> — ينتهي في %s', 'vmp'),
-                    esc_html($current_plan ? $current_plan->name : __('غير معروف', 'vmp')),
-                    esc_html($end_date)
-                ); ?>
-            </div>
+            <?php if ($is_free_plan) : ?>
+                <!-- 🎯 البائع مشترك في الخطة المجانية: ملاحظة تشجعه على الترقية -->
+                <div class="vmp-notice vmp-notice-info">
+                    <strong><?php _e('أنت مشترك في الخطة المجانية.', 'vmp'); ?></strong>
+                    <?php _e('يمكنك ترقية اشتراكك في أي وقت للحصول على ميزات أكثر.', 'vmp'); ?>
+                    <?php if ($end_date !== '-') : ?>
+                        <span style="display:block; margin-top:4px; font-size:13px; opacity:.85;">
+                            <?php printf(__('تنتهي في %s', 'vmp'), esc_html($end_date)); ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+            <?php else : ?>
+                <div class="vmp-notice vmp-notice-success">
+                    <?php printf(
+                        __('اشتراكك الحالي: <strong>%s</strong> — ينتهي في %s', 'vmp'),
+                        esc_html($current_plan ? $current_plan->name : __('غير معروف', 'vmp')),
+                        esc_html($end_date)
+                    ); ?>
+                </div>
+            <?php endif; ?>
         <?php else : ?>
             <div class="vmp-notice vmp-notice-info">
                 <?php _e('ليس لديك خطة اشتراك نشطة. اختر خطة من القائمة أدناه.', 'vmp'); ?>
@@ -167,80 +181,3 @@ $nav_file = VMP_PLUGIN_DIR . 'public/templates/partials/vendor-nav.php';
 </div>
 
 <!-- ✅ JavaScript لمعالجة طلب تغيير الخطة -->
-<script>
-jQuery(document).ready(function($) {
-    'use strict';
-
-    // ── طلب تغيير الخطة ──
-    $(document).on('click', '.vmp-btn-request-plan-change', function(e) {
-        e.preventDefault();
-
-        var $btn = $(this);
-        var planId = $btn.data('plan-id');
-        var planName = $btn.data('plan-name');
-
-        if (!confirm('<?php _e('هل أنت متأكد من طلب تغيير خطتك إلى', 'vmp'); ?> "' + planName + '"? <?php _e('سيتم مراجعة الطلب من قبل المشرف.', 'vmp'); ?>')) {
-            return;
-        }
-
-        $btn.prop('disabled', true).text('<?php _e('جاري الإرسال...', 'vmp'); ?>');
-        $('.vmp-loading').addClass('show');
-
-        $.post(vmp_public.ajax_url, {
-            action: 'vmp_request_plan_change',
-            nonce: vmp_public.nonce,
-            plan_id: planId
-        }, function(response) {
-            $('.vmp-loading').removeClass('show');
-            $btn.prop('disabled', false).text('<?php _e('طلب تغيير الخطة', 'vmp'); ?>');
-
-            if (response.success) {
-                VMP.showNotice(response.data.message, 'success');
-                setTimeout(function() {
-                    location.reload();
-                }, 2000);
-            } else {
-                VMP.showNotice(response.data.message, 'error');
-            }
-        }).fail(function() {
-            $('.vmp-loading').removeClass('show');
-            $btn.prop('disabled', false).text('<?php _e('طلب تغيير الخطة', 'vmp'); ?>');
-            VMP.showNotice('<?php _e('حدث خطأ في الاتصال.', 'vmp'); ?>', 'error');
-        });
-    });
-
-    // ── إلغاء طلب تغيير الخطة ──
-    $(document).on('click', '.vmp-cancel-plan-change', function(e) {
-        e.preventDefault();
-
-        if (!confirm('<?php _e('هل أنت متأكد من إلغاء طلب تغيير الخطة؟', 'vmp'); ?>')) {
-            return;
-        }
-
-        var $btn = $(this);
-        $btn.prop('disabled', true).text('<?php _e('جاري...', 'vmp'); ?>');
-        $('.vmp-loading').addClass('show');
-
-        $.post(vmp_public.ajax_url, {
-            action: 'vmp_cancel_plan_change',
-            nonce: vmp_public.nonce
-        }, function(response) {
-            $('.vmp-loading').removeClass('show');
-            $btn.prop('disabled', false).text('<?php _e('إلغاء الطلب', 'vmp'); ?>');
-
-            if (response.success) {
-                VMP.showNotice(response.data.message, 'success');
-                setTimeout(function() {
-                    location.reload();
-                }, 1500);
-            } else {
-                VMP.showNotice(response.data.message, 'error');
-            }
-        }).fail(function() {
-            $('.vmp-loading').removeClass('show');
-            $btn.prop('disabled', false).text('<?php _e('إلغاء الطلب', 'vmp'); ?>');
-            VMP.showNotice('<?php _e('حدث خطأ في الاتصال.', 'vmp'); ?>', 'error');
-        });
-    });
-});
-</script>

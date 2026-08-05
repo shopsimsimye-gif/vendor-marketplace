@@ -282,37 +282,4 @@ $terms_url = $terms_page_id && get_post($terms_page_id) ? get_permalink($terms_p
     </div>
 </div>
 
-<style>
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-.vmp-input-error {
-    border-color: #ef4444 !important;
-}
-.vmp-field-error {
-    display: block;
-    color: #ef4444;
-    font-size: 12px;
-    margin-top: 4px;
-}
-</style>
 
-<script>
-(function() {
-    'use strict';
-    window.vmpRegisterData = {
-        restGuestUrl: '<?php echo esc_url(rest_url('vmp/v1/vendor/register-guest')); ?>',
-        restApplyUrl: '<?php echo esc_url(rest_url('vmp/v1/vendor/apply')); ?>',
-        ajaxUrl: '<?php echo esc_js(admin_url('admin-ajax.php')); ?>',
-        isLoggedIn: <?php echo $is_logged_in ? 'true' : 'false'; ?>,
-        strings: {
-            submit: '<?php echo esc_js($is_logged_in ? __('إرسال طلب الترقية', 'vmp') : __('تسجيل كبائع', 'vmp')); ?>',
-            submitting: '<?php echo esc_js(__('جاري إرسال الطلب...', 'vmp')); ?>',
-            error: '<?php echo esc_js(__('حدث خطأ أثناء معالجة الطلب', 'vmp')); ?>',
-            passwordMismatch: '<?php echo esc_js(__('كلمتا المرور غير متطابقتين', 'vmp')); ?>',
-            termsRequired: '<?php echo esc_js(__('يجب الموافقة على الشروط والأحكام', 'vmp')); ?>'
-        }
-    };
-})();
-</script>

@@ -347,3 +347,19 @@
         padding: 10px 18px;
     }
 }
+/* ═ Added from template inline (task B) ═ */
+.vmp-product-actions .add_to_cart_button {
+    background: var(--vmp-primary);
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 13px;
+    text-decoration: none;
+}
+.vmp-product-actions .add_to_cart_button:hover {
+    background: var(--vmp-primary-dark);
+}

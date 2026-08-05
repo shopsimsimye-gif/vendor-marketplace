@@ -6,12 +6,20 @@ defined('ABSPATH') || exit;
 /**
  * Class WithdrawalRequest
  *
- * Description of administrative platform component WithdrawalRequest.
- *
  * @package vendor-marketplace
  */
 class WithdrawalRequest extends AbstractRequest
 {
+    /**
+     * Authorize functionality helper.
+     *
+     * @return bool Output payload.
+     */
+    public function authorize(): bool
+    {
+        return current_user_can('vmp_manage_withdrawals');
+    }
+
     /**
      * Rules functionality helper.
      *
@@ -20,10 +28,10 @@ class WithdrawalRequest extends AbstractRequest
     protected function rules(): array
     {
         return [
-            'vendor_id'      => ['required', 'integer'],
-            'amount'         => ['required', 'numeric', 'min_value:0'],
+            'vendor_id'      => ['required', 'integer', 'min:1'],
+            'amount'         => ['required', 'numeric', 'min:0.01'],
             'method'         => ['required', 'string', 'in:bank_transfer,paypal,other'],
-            'method_details' => ['array'],
+            'method_details' => ['nullable', 'array'],
         ];
     }
 
@@ -54,17 +62,10 @@ class WithdrawalRequest extends AbstractRequest
         }
 
         $minWithdrawal = (float) get_option('vmp_min_withdrawal', 50);
-        $amount = $this->float('amount');
-        
+        $amount = (float) $this->input('amount', 0);
+
         if ($amount < $minWithdrawal) {
-            $errors = $this->errors();
-            $errors[] = sprintf(__('الحد الأدنى للسحب هو %s.', 'vmp'), $minWithdrawal);
-            
-            $reflection = new \ReflectionClass(parent::class);
-            $property = $reflection->getProperty('errors');
-            $property->setAccessible(true);
-            $property->setValue($this, $errors);
-            
+            $this->addError(sprintf(__('الحد الأدنى للسحب هو %s.', 'vmp'), $minWithdrawal));
             return false;
         }
 

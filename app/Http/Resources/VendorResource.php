@@ -1,91 +1,134 @@
 <?php
+/**
+ * VendorResource — تحويل بيانات البائع لـ API (raw data بدون escaping)
+ *
+ * @package VMP\Http\Resources
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\Resources;
 
 defined('ABSPATH') || exit;
 
-/**
- * Vendor Resource — explicit allow-list for API responses.
- *
- * PUBLIC fields (returned to everyone):
- *   id, store_name, store_slug, store_description, store_url,
- *   store_logo, store_banner, store_video, rating, is_trusted,
- *   social_links
- *
- * PRIVATE fields (returned only to the vendor themselves or admins):
- *   store_email, store_phone, store_address, store_latitude, store_longitude,
- *   whatsapp_number, balance, total_products, total_orders, total_sales,
- *   subscription_plan, subscription_status, subscription_expiry,
- *   custom_css
- */
 class VendorResource
 {
     /**
-     * Transform vendor object into API-safe array.
+     * تحويل كائن البائع إلى array للـ API
      *
-     * @param object $vendor Raw vendor object from database.
-     * @param bool   $includePrivate Include private fields (vendor's own profile or admin).
+     * @param object $vendor         كائن البائع من DB
+     * @param bool   $includePrivate تضمين الحقول الخاصة
      * @return array
      */
     public static function toArray(object $vendor, bool $includePrivate = false): array
     {
+        $vendorId = (int) ($vendor->id ?? 0);
+
         $data = [
-            'id'              => (int) ($vendor->id ?? 0),
-            'store_name'      => esc_html($vendor->store_name ?? ''),
-            'store_slug'      => esc_attr($vendor->store_slug ?? ''),
-            'description'     => wp_kses_post($vendor->store_description ?? ''),
-            'store_url'       => esc_url($vendor->store_url ?? get_permalink($vendor->id ?? 0)),
-            'logo_url'        => esc_url($vendor->store_logo ?? ''),
-            'banner_url'      => esc_url($vendor->store_banner ?? ''),
-            'video_url'       => esc_url($vendor->store_video ?? ''),
-            'rating'          => (float) ($vendor->rating ?? 0.0),
-            'is_trusted'      => (bool) ($vendor->is_trusted ?? false),
-            'social_links'    => [
-                'facebook'  => esc_url($vendor->social_facebook ?? ''),
-                'instagram' => esc_url($vendor->social_instagram ?? ''),
-                'twitter'   => esc_url($vendor->social_twitter ?? ''),
-                'youtube'   => esc_url($vendor->social_youtube ?? ''),
-            ],
+            'id'           => $vendorId,
+            'store_name'   => (string) ($vendor->store_name ?? ''),
+            'store_slug'   => (string) ($vendor->store_slug ?? ''),
+            'description'  => (string) ($vendor->store_description ?? ''),
+            'store_url'    => self::getStoreUrl($vendor),
+            'logo_url'     => self::getAttachmentUrl((int) ($vendor->store_logo ?? 0), 'medium'),
+            'banner_url'   => self::getAttachmentUrl((int) ($vendor->store_banner ?? 0), 'large'),
+            'video_url'    => (string) ($vendor->store_video ?? ''),
+            'rating'       => (float) ($vendor->rating ?? 0.0),
+            'is_trusted'   => (bool) ($vendor->is_trusted ?? false),
+            'social_links' => self::formatSocialLinks($vendor),
         ];
 
         if ($includePrivate) {
             $data['contact'] = [
-                'email'     => sanitize_email($vendor->store_email ?? ''),
-                'phone'     => sanitize_text_field($vendor->store_phone ?? ''),
-                'address'   => sanitize_textarea_field($vendor->store_address ?? ''),
+                'email'     => (string) ($vendor->store_email ?? ''),
+                'phone'     => (string) ($vendor->store_phone ?? ''),
+                'address'   => (string) ($vendor->store_address ?? ''),
                 'latitude'  => (float) ($vendor->store_latitude ?? 0.0),
                 'longitude' => (float) ($vendor->store_longitude ?? 0.0),
-                'whatsapp'  => sanitize_text_field($vendor->whatsapp_number ?? ''),
+                'whatsapp'  => (string) ($vendor->whatsapp_number ?? ''),
             ];
 
             $data['financial'] = [
-                'balance'       => (float) ($vendor->balance ?? 0.0),
-                'total_sales'   => (float) ($vendor->total_sales ?? 0.0),
-                'total_orders'  => (int) ($vendor->total_orders ?? 0),
-                'total_products'=> (int) ($vendor->total_products ?? 0),
+                'balance'        => (float) ($vendor->balance ?? 0.0),
+                'total_sales'    => (float) ($vendor->total_sales ?? 0.0),
+                'total_orders'   => (int) ($vendor->total_orders ?? 0),
+                'total_products' => (int) ($vendor->total_products ?? 0),
             ];
 
             $data['subscription'] = [
-                'plan'      => esc_attr($vendor->subscription_plan ?? ''),
-                'status'    => esc_attr($vendor->subscription_status ?? ''),
-                'expiry'    => esc_attr($vendor->subscription_expiry ?? ''),
+                'plan'   => (string) ($vendor->subscription_plan ?? ''),
+                'status' => (string) ($vendor->subscription_status ?? ''),
+                'expiry' => self::formatDate($vendor->subscription_expiry ?? null),
             ];
 
-            // [QA 2026-08-02] sanitize_textarea_field كان يكسر CSS ({}, ;).
-            // wp_strip_all_tags يزيل وسوم HTML/Script مع الإبقاء على قواعد CSS.
-            $data['custom_css'] = wp_strip_all_tags((string) ($vendor->custom_css ?? ''));
+            $data['custom_css'] = (string) ($vendor->custom_css ?? '');
         }
 
         return $data;
     }
 
     /**
-     * Transform a collection of vendors.
-     *
-     * @param array $vendors Array of vendor objects.
-     * @return array
+     * تحويل مجموعة من البائعين
      */
     public static function collection(array $vendors): array
     {
-        return array_map(fn($v) => self::toArray($v, false), $vendors);
+        return array_map(static fn($v) => self::toArray($v, false), $vendors);
+    }
+
+    /**
+     * رابط المتجر العام
+     */
+    private static function getStoreUrl(object $vendor): string
+    {
+        if (!empty($vendor->store_url)) {
+            return (string) $vendor->store_url;
+        }
+
+        $storeBase = get_option('vmp_store_base', 'store');
+        $slug      = !empty($vendor->store_slug)
+            ? (string) $vendor->store_slug
+            : 'vendor-' . (int) ($vendor->id ?? 0);
+
+        return home_url('/' . trailingslashit($storeBase) . $slug . '/');
+    }
+
+    /**
+     * رابط مرفق (صورة/فيديو)
+     */
+    private static function getAttachmentUrl(int $attachmentId, string $size = 'medium'): string
+    {
+        if ($attachmentId <= 0) {
+            return '';
+        }
+        $url = wp_get_attachment_image_url($attachmentId, $size);
+        return $url ? (string) $url : '';
+    }
+
+    /**
+     * تنسيق روابط التواصل الاجتماعي
+     */
+    private static function formatSocialLinks(object $vendor): ?array
+    {
+        $links = [
+            'facebook'  => (string) ($vendor->social_facebook ?? ''),
+            'instagram' => (string) ($vendor->social_instagram ?? ''),
+            'twitter'   => (string) ($vendor->social_twitter ?? ''),
+            'youtube'   => (string) ($vendor->social_youtube ?? ''),
+        ];
+
+        // إزالة الفارغة — إذا لم يوجد أي رابط، أرجع null
+        $links = array_filter($links);
+        return empty($links) ? null : $links;
+    }
+
+    /**
+     * تنسيق التاريخ لـ ISO 8601
+     */
+    private static function formatDate(?string $date): ?string
+    {
+        if (empty($date)) {
+            return null;
+        }
+        $timestamp = strtotime($date);
+        return $timestamp ? date('c', $timestamp) : null;
     }
 }

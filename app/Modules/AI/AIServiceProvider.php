@@ -148,11 +148,14 @@ class AIServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        add_action('wp_ajax_vmp_ai_create_product_from_image', [$this->controller(), 'createJob']);
-        add_action('wp_ajax_vmp_ai_get_product_job', [$this->controller(), 'getJob']);
-        add_action('wp_ajax_vmp_ai_get_job_timeline', [$this->controller(), 'getJobTimeline']);
-        add_action('wp_ajax_vmp_ai_regenerate_product_part', [$this->controller(), 'regenerate']);
-        add_action('wp_ajax_vmp_ai_publish_product_draft', [$this->controller(), 'publish']);
+        // ─── AJAX routes نُقلت إلى RouteRegistry (CoreServiceProvider::registerRoutes) — [QA 2026-08-05] ───
+        // القاعدة: RouteRegistry هو المصدر الوحيد لجميع AJAX Hooks.
+        // لا تُعِد تفعيل add_action('wp_ajax_*') هنا — استخدم $registry->ajax() في CoreServiceProvider.
+        // add_action('wp_ajax_vmp_ai_create_product_from_image', [$this->controller(), 'createJob']);
+        // add_action('wp_ajax_vmp_ai_get_product_job', [$this->controller(), 'getJob']);
+        // add_action('wp_ajax_vmp_ai_get_job_timeline', [$this->controller(), 'getJobTimeline']);
+        // add_action('wp_ajax_vmp_ai_regenerate_product_part', [$this->controller(), 'regenerate']);
+        // add_action('wp_ajax_vmp_ai_publish_product_draft', [$this->controller(), 'publish']);
 
         // Admin notice if encryption key not configured
         add_action('admin_notices', [$this, 'encryptionKeyAdminNotice']);

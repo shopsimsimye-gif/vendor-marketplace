@@ -776,3 +776,8 @@
   direction: rtl;
   text-align: right;
 }
+/* ═ Added from template inline (task B) — @keyframes spin used by .spin icons on register page ═ */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

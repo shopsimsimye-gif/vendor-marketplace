@@ -6,8 +6,6 @@ defined('ABSPATH') || exit;
 /**
  * Class VendorGetCommissionChartRequest
  *
- * Description of administrative platform component VendorGetCommissionChartRequest.
- *
  * @package vendor-marketplace
  */
 class VendorGetCommissionChartRequest extends AbstractRequest
@@ -30,7 +28,19 @@ class VendorGetCommissionChartRequest extends AbstractRequest
     protected function rules(): array
     {
         return [
-            'months' => ['integer'],
+            'months' => ['nullable', 'integer', 'min:1', 'max:36'],
+        ];
+    }
+
+    /**
+     * Attributes functionality helper.
+     *
+     * @return array Output payload.
+     */
+    protected function attributes(): array
+    {
+        return [
+            'months' => __('عدد الأشهر', 'vmp'),
         ];
     }
 

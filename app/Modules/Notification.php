@@ -25,10 +25,13 @@ class Notification extends AbstractModule
      * @param Container $container Description index.
      * @return void Output payload.
      */
+    private $settingsModule;
+
     public function __construct(Container $container)
     {
         parent::__construct($container);
         $this->vendorRepository = $this->make(VendorRepository::class);
+        $this->settingsModule = $this->make(\VMP\Modules\Settings::class);
     }
 
     /**
@@ -82,6 +85,16 @@ class Notification extends AbstractModule
             __('طلب تسجيل بائع جديد', 'vmp'),
             sprintf(__('تم تسجيل بائع جديد: %s (%s)', 'vmp'), $vendor->store_name, $user->user_email)
         );
+
+        // ✅ إضافة إشعار في لوحة تحكم البائع
+        if ($this->settingsModule) {
+            $this->settingsModule->add_vendor_dashboard_notice(
+                $vendor_id,
+                __("تم استلام طلب التسجيل", "vmp"),
+                sprintf(__("مرحباً %s، تم استلام طلب تسجيلك كبائع وهو قيد المراجعة.", "vmp"), $vendor->store_name),
+                "info"
+            );
+        }
     }
 
     /**
@@ -108,6 +121,16 @@ class Notification extends AbstractModule
                 $user->user_email,
                 __('تم قبول طلبك كبائع!', 'vmp'),
                 sprintf(__('تهانيناً %s! تم قبول طلبك كبائع. يمكنك الآن البدء في إضافة منتجاتك.', 'vmp'), $vendor->store_name)
+            );
+        }
+
+        // ✅ إضافة إشعار في لوحة تحكم البائع
+        if ($this->settingsModule) {
+            $this->settingsModule->add_vendor_dashboard_notice(
+                $vendor_id,
+                __("تم قبول طلبك!", "vmp"),
+                sprintf(__("تهانينا %s! تم قبول طلبك كبائع. يمكنك الآن البدء في إضافة منتجاتك.", "vmp"), $vendor->store_name),
+                "success"
             );
         }
     }
@@ -137,6 +160,16 @@ class Notification extends AbstractModule
                 $user->user_email,
                 __('تم رفض طلبك كبائع', 'vmp'),
                 sprintf(__('نعتذر %s، تم رفض طلبك كبائع. السبب: %s', 'vmp'), $vendor->store_name, $reason)
+            );
+        }
+
+        // ✅ إضافة إشعار في لوحة تحكم البائع
+        if ($this->settingsModule) {
+            $this->settingsModule->add_vendor_dashboard_notice(
+                $vendor_id,
+                __("تم رفض طلب التسجيل", "vmp"),
+                sprintf(__("نعتذر %s، تم رفض طلبك كبائع. السبب: %s", "vmp"), $vendor->store_name, $reason),
+                "error"
             );
         }
     }
@@ -171,6 +204,18 @@ class Notification extends AbstractModule
                 sprintf(__('تم قبول منتجك "%s" وهو الآن متاح للبيع.', 'vmp'), $product_name)
             );
         }
+
+        // ✅ إضافة إشعار في لوحة تحكم البائع
+        if ($this->settingsModule) {
+            $product = wc_get_product($product_id);
+            $product_name = $product ? $product->get_name() : __("منتج", "vmp");
+            $this->settingsModule->add_vendor_dashboard_notice(
+                $vendor_id,
+                __("تم قبول منتجك", "vmp"),
+                sprintf(__("تم قبول منتجك \"%s\" وهو الآن متاح للبيع.", "vmp"), $product_name),
+                "success"
+            );
+        }
     }
 
     /**
@@ -201,6 +246,16 @@ class Notification extends AbstractModule
                 sprintf(__('لديك طلب جديد #%d', 'vmp'), $parent_order_id)
             );
         }
+
+        // ✅ إضافة إشعار في لوحة تحكم البائع
+        if ($this->settingsModule) {
+            $this->settingsModule->add_vendor_dashboard_notice(
+                $vendor_id,
+                __("طلب جديد!", "vmp"),
+                sprintf(__("لديك طلب جديد #%d", "vmp"), $parent_order_id),
+                "success"
+            );
+        }
     }
 
     /**
@@ -228,6 +283,16 @@ class Notification extends AbstractModule
             __('تم الموافقة على السحب', 'vmp'),
             sprintf(__('تم الموافقة على طلب سحب بقيمة %s', 'vmp'), wc_price($amount))
         );
+
+        // ✅ إضافة إشعار في لوحة تحكم البائع
+        if ($this->settingsModule) {
+            $this->settingsModule->add_vendor_dashboard_notice(
+                $vendor_id,
+                __("تم الموافقة على السحب", "vmp"),
+                sprintf(__("تم الموافقة على طلب سحب بقيمة %s", "vmp"), wc_price($amount)),
+                "success"
+            );
+        }
     }
 
     /**
@@ -255,5 +320,15 @@ class Notification extends AbstractModule
             __('اشتراكك على وشك الانتهاء', 'vmp'),
             sprintf(__('اشتراكك ينتهي في %s. يرجى التجديد لتجنب انقطاع الخدمة.', 'vmp'), $end_date)
         );
+
+        // ✅ إضافة إشعار في لوحة تحكم البائع
+        if ($this->settingsModule) {
+            $this->settingsModule->add_vendor_dashboard_notice(
+                $vendor_id,
+                __("اشتراكك على وشك الانتهاء", "vmp"),
+                sprintf(__("اشتراكك ينتهي في %s. يرجى التجديد لتجنب انقطاع الخدمة.", "vmp"), $end_date),
+                "warning"
+            );
+        }
     }
 }

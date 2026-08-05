@@ -1,0 +1,10 @@
+.vmp-modal { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; }
+.vmp-modal[hidden] { display: none; }
+.vmp-modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }
+.vmp-modal-content { position: relative; background: #fff; border-radius: 12px; max-width: 520px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.vmp-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--vmp-border, #e2e8f0); }
+.vmp-modal-header h3 { margin: 0; font-size: 16px; }
+.vmp-modal-close { background: none; border: none; font-size: 24px; line-height: 1; cursor: pointer; color: #64748b; }
+.vmp-modal-body { padding: 20px; }
+.vmp-order-modal-items { margin: 0 0 12px; padding: 0; list-style: none; }
+.vmp-order-modal-items li { padding: 8px 0; border-bottom: 1px solid var(--vmp-border, #e2e8f0); }

@@ -1,0 +1,12 @@
+# Backup dirs & temp files (QA/source of truth is tracked code, not these)
+.qa_backups/
+*.bak-*
+*.pre-qa-fix
+.q0/
+/q0/
+/backups/
+/tmp/
+# temp fix scripts (repositories are source of truth; these are throwaway)
+/fix-pages.php
+/vmp-fix.php
+/vmp-fix-repositories.php

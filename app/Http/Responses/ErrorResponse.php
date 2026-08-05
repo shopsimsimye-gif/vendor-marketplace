@@ -1,42 +1,43 @@
 <?php
+/**
+ * ErrorResponse — استجابة خطأ للـ API
+ *
+ * @package VMP\Http\Responses
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\Responses;
 
 defined('ABSPATH') || exit;
 
-/**
- * Class ErrorResponse
- *
- * Description of administrative platform component ErrorResponse.
- *
- * @package vendor-marketplace
- */
 class ErrorResponse extends ApiResponse
 {
     public function __construct(
         protected string $message = 'An error occurred',
         protected string $code = 'error',
         int $statusCode = 400,
-        protected array $additionalData = [],
+        protected array $details = [],
         array $headers = []
     ) {
         parent::__construct($statusCode, $headers);
     }
 
     /**
-     * ToArray functionality helper.
-     *
-     * @return array Output payload.
+     * تحويل إلى array
      */
     public function toArray(): array
     {
         $response = [
             'success' => false,
-            'code'    => $this->code,
-            'message' => $this->message,
+            'error'   => [
+                'code'    => $this->code,
+                'message' => $this->message,
+            ],
         ];
 
-        if (!empty($this->additionalData)) {
-            $response = array_merge($response, $this->additionalData);
+        // ✅ تفاصيل إضافية مُحصورة تحت مفتاح `details` — لا overwrite
+        if (!empty($this->details)) {
+            $response['error']['details'] = $this->details;
         }
 
         return $response;

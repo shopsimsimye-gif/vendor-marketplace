@@ -1,16 +1,18 @@
 <?php
+/**
+ * الكلاس الأساسي لجميع طلبات الإدخال (Requests)
+ *
+ * @package VMP\Http\Requests
+ * @since 3.0.0
+ */
+
 namespace VMP\Http\Requests;
 
 defined('ABSPATH') || exit;
 
 use VMP\Exceptions\ValidationException;
 use VMP\Exceptions\AuthorizationException;
-use VMP\Core\Container;
-use VMP\Contracts\VendorRepositoryInterface;
 
-/**
- * الكلاس الأساسي لجميع طلبات الإدخال (Requests)
- */
 abstract class AbstractRequest
 {
     protected array $data = [];
@@ -39,53 +41,44 @@ abstract class AbstractRequest
     }
 
     /**
-     * إنشاء Request من $_POST مع Nonce.
-     * ✅ تم تحسين التحقق من nonce وإضافة دعم لـ header X-WP-Nonce
+     * إنشاء Request من $_POST مع Nonce
      */
     public static function fromPost(string $nonce_action = '', string $nonce_field = '_wpnonce'): static
     {
         $instance = new static();
 
-        // إذا كان هناك nonce مطلوب، قم بالتحقق
         if ($nonce_action) {
-            $nonce = '';
-            
-            // محاولة الحصول على nonce من المصادر المختلفة
-            $sanitize = function (mixed $value): string {
-                if (function_exists('sanitize_text_field') && function_exists('wp_unslash')) {
-                    return \sanitize_text_field(\wp_unslash($value));
-                }
+            $nonce = self::extractNonce($nonce_field);
 
-                return trim((string) $value);
-            };
-
-            if (!empty($_POST[$nonce_field])) {
-                $nonce = $sanitize($_POST[$nonce_field]);
-            } elseif (!empty($_POST['nonce'])) {
-                $nonce = $sanitize($_POST['nonce']);
-            } elseif (!empty($_POST['security'])) {
-                $nonce = $sanitize($_POST['security']);
-            } elseif (!empty($_SERVER['HTTP_X_WP_NONCE'])) {
-                $nonce = $sanitize($_SERVER['HTTP_X_WP_NONCE']);
-            } elseif (!empty($_SERVER['HTTP_X_CSRF_TOKEN'])) {
-                $nonce = $sanitize($_SERVER['HTTP_X_CSRF_TOKEN']);
-            }
-
-            $nonceValid = true;
-            if (function_exists('wp_verify_nonce')) {
-                $nonceValid = \wp_verify_nonce($nonce, $nonce_action);
-            }
-
-            if (empty($nonce) || !$nonceValid) {
+            if (empty($nonce) || !wp_verify_nonce($nonce, $nonce_action)) {
                 $instance->data = [];
-                $instance->errors[] = \__('رمز الأمان غير صالح أو منتهي الصلاحية.', 'vmp');
-                $instance->validated = true;
+                $instance->errors[] = __('رمز الأمان غير صالح أو منتهي الصلاحية.', 'vmp');
+                // ❌ لا نُعيّن validated = true هنا!
                 return $instance;
             }
         }
 
-        $instance->data = function_exists('\wp_unslash') ? \wp_unslash($_POST) : $_POST;
+        $instance->data = wp_unslash($_POST);
         return $instance;
+    }
+
+    private static function extractNonce(string $nonce_field): string
+    {
+        $sources = [
+            $_POST[$nonce_field] ?? null,
+            $_POST['nonce'] ?? null,
+            $_POST['security'] ?? null,
+            $_SERVER['HTTP_X_WP_NONCE'] ?? null,
+            $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null,
+        ];
+
+        foreach ($sources as $value) {
+            if (!empty($value)) {
+                return sanitize_text_field(wp_unslash($value));
+            }
+        }
+
+        return '';
     }
 
     public static function fromRestRequest(\WP_REST_Request $request): static
@@ -98,7 +91,7 @@ abstract class AbstractRequest
     public function validate(): bool
     {
         if (!$this->authorize()) {
-            throw new AuthorizationException(\__('غير مصرح لك بالقيام بهذا الإجراء.', 'vmp'));
+            throw new AuthorizationException(__('غير مصرح لك بالقيام بهذا الإجراء.', 'vmp'));
         }
 
         if ($this->validated) {
@@ -110,8 +103,8 @@ abstract class AbstractRequest
         $rules = $this->rules();
 
         foreach ($rules as $field => $fieldRules) {
-            $value    = $this->data[$field] ?? null;
-            $label    = $this->attributes()[$field] ?? $field;
+            $value = $this->data[$field] ?? null;
+            $label = $this->attributes()[$field] ?? $field;
 
             foreach ($fieldRules as $rule) {
                 $error = $this->applyRule($rule, $field, $value, $label);
@@ -138,7 +131,7 @@ abstract class AbstractRequest
 
         if ($value === null || $value === '') {
             if ($ruleName === 'required') {
-                return sprintf(\__('حقل "%s" مطلوب.', 'vmp'), $label);
+                return sprintf(__('حقل "%s" مطلوب.', 'vmp'), $label);
             }
             return null;
         }
@@ -146,40 +139,40 @@ abstract class AbstractRequest
         return match ($ruleName) {
             'required'  => null,
             'string'    => !is_string($value)
-                            ? sprintf(\__('حقل "%s" يجب أن يكون نصاً.', 'vmp'), $label)
+                            ? sprintf(__('حقل "%s" يجب أن يكون نصاً.', 'vmp'), $label)
                             : null,
             'numeric'   => !is_numeric($value)
-                            ? sprintf(\__('حقل "%s" يجب أن يكون رقماً.', 'vmp'), $label)
+                            ? sprintf(__('حقل "%s" يجب أن يكون رقماً.', 'vmp'), $label)
                             : null,
             'integer'   => filter_var($value, FILTER_VALIDATE_INT) === false
-                            ? sprintf(\__('حقل "%s" يجب أن يكون عدداً صحيحاً.', 'vmp'), $label)
+                            ? sprintf(__('حقل "%s" يجب أن يكون عدداً صحيحاً.', 'vmp'), $label)
                             : null,
             'float'     => filter_var($value, FILTER_VALIDATE_FLOAT) === false
-                            ? sprintf(\__('حقل "%s" يجب أن يكون رقماً عشرياً.', 'vmp'), $label)
+                            ? sprintf(__('حقل "%s" يجب أن يكون رقماً عشرياً.', 'vmp'), $label)
                             : null,
-            'min'       => strlen((string) $value) < (int) $ruleParam
-                            ? sprintf(\__('حقل "%s" يجب أن يكون %d أحرف على الأقل.', 'vmp'), $label, $ruleParam)
+            'min'       => mb_strlen((string) $value) < (int) $ruleParam
+                            ? sprintf(__('حقل "%s" يجب أن يكون %d أحرف على الأقل.', 'vmp'), $label, $ruleParam)
                             : null,
-            'max'       => strlen((string) $value) > (int) $ruleParam
-                            ? sprintf(\__('حقل "%s" لا يمكن أن يتجاوز %d حرفاً.', 'vmp'), $label, $ruleParam)
+            'max'       => mb_strlen((string) $value) > (int) $ruleParam
+                            ? sprintf(__('حقل "%s" لا يمكن أن يتجاوز %d حرفاً.', 'vmp'), $label, $ruleParam)
                             : null,
             'min_value' => (float) $value < (float) $ruleParam
-                            ? sprintf(\__('قيمة "%s" يجب أن تكون أكبر من أو تساوي %s.', 'vmp'), $label, $ruleParam)
+                            ? sprintf(__('قيمة "%s" يجب أن تكون أكبر من أو تساوي %s.', 'vmp'), $label, $ruleParam)
                             : null,
             'max_value' => (float) $value > (float) $ruleParam
-                            ? sprintf(\__('قيمة "%s" لا يمكن أن تتجاوز %s.', 'vmp'), $label, $ruleParam)
+                            ? sprintf(__('قيمة "%s" لا يمكن أن تتجاوز %s.', 'vmp'), $label, $ruleParam)
                             : null,
             'email'     => !is_email($value)
-                            ? sprintf(\__('حقل "%s" يجب أن يكون بريداً إلكترونياً صالحاً.', 'vmp'), $label)
+                            ? sprintf(__('حقل "%s" يجب أن يكون بريداً إلكترونياً صالحاً.', 'vmp'), $label)
                             : null,
             'url'       => !filter_var($value, FILTER_VALIDATE_URL)
-                            ? sprintf(\__('حقل "%s" يجب أن يكون رابطاً صالحاً.', 'vmp'), $label)
+                            ? sprintf(__('حقل "%s" يجب أن يكون رابطاً صالحاً.', 'vmp'), $label)
                             : null,
             'boolean'   => !in_array($value, [true, false, 0, 1, '0', '1'], true)
-                            ? sprintf(\__('حقل "%s" يجب أن يكون قيمة منطقية.', 'vmp'), $label)
+                            ? sprintf(__('حقل "%s" يجب أن يكون قيمة منطقية.', 'vmp'), $label)
                             : null,
             'array'     => !is_array($value)
-                            ? sprintf(\__('حقل "%s" يجب أن يكون مصفوفة.', 'vmp'), $label)
+                            ? sprintf(__('حقل "%s" يجب أن يكون مصفوفة.', 'vmp'), $label)
                             : null,
             'in'        => !in_array((string) $value, explode(',', (string) $ruleParam), true)
                             ? sprintf(__('قيمة "%s" غير مسموحة.', 'vmp'), $label)
@@ -191,22 +184,22 @@ abstract class AbstractRequest
                             ? sprintf(__('تنسيق حقل "%s" غير صالح.', 'vmp'), $label)
                             : null,
             'phone'     => !preg_match('/^\+?[0-9]{7,15}$/', preg_replace('/\s/', '', (string) $value))
-                            ? sprintf(\__('رقم الهاتف في حقل "%s" غير صالح.', 'vmp'), $label)
+                            ? sprintf(__('رقم الهاتف في حقل "%s" غير صالح.', 'vmp'), $label)
                             : null,
-            default     => null,
+            default     => throw new \InvalidArgumentException(
+                            sprintf(__('قاعدة تحقق غير معروفة: %s', 'vmp'), $ruleName)
+                           ),
         };
     }
 
     public function isValid(): bool
     {
-        if (!$this->validated) {
-            try {
-                $this->validate();
-            } catch (ValidationException | AuthorizationException $e) {
-                return false;
-            }
+        try {
+            $this->validate();
+            return true;
+        } catch (ValidationException | AuthorizationException $e) {
+            return false;
         }
-        return empty($this->errors);
     }
 
     public function validated(): array
@@ -230,11 +223,6 @@ abstract class AbstractRequest
         return $this->errors()[0] ?? '';
     }
 
-    /**
-     * إضافة خطأ مخصص من الفئات الفرعية (بدل Reflection).
-     *
-     * [QA 2026-08-02] بديل نظيف عن hack الـ Reflection في RegisterVendorRequest.
-     */
     protected function addError(string $error): void
     {
         $this->errors[] = $error;
@@ -267,7 +255,14 @@ abstract class AbstractRequest
 
     public function bool(string $key, bool $default = false): bool
     {
-        return !empty($this->data[$key]);
+        $value = $this->data[$key] ?? null;
+        if ($value === null) {
+            return $default;
+        }
+        if (is_bool($value)) {
+            return $value;
+        }
+        return !in_array(strtolower((string) $value), ['0', 'false', 'no', 'off', ''], true);
     }
 
     public function all(): array
