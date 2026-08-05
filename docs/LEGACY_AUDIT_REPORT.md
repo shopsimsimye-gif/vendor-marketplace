@@ -200,3 +200,47 @@ _لا يُنفّذ حذف أي Module كامل في نفس مرحلة إزالة
 
 ### Recovery
 `git show HEAD~1:app/Modules/Report.php` (still in `442a`'s parent `297a`) or `.qa_backups/report-removal-1c-20260806-0032/Report.php.deleted`.
+
+---
+
+## Phase 2 Execution Log (2026-08-06)
+
+### Action: Unify AI Controllers
+| File | Action | Reason |
+|------|--------|--------|
+| `app/Modules/AI/Controllers/AIProductController.php` | `git mv` → `app/Controllers/` | Unify all HTTP controllers in one location |
+| `AIProductController.php` | namespace update | `VMP\Modules\AI\Controllers` → `VMP\Controllers` |
+| `CoreServiceProvider.php:48` | use update | Match new namespace |
+| `AIServiceProvider.php:25` | use update | Match new namespace |
+| `app/Modules/AI/Controllers/` | `rmdir` | Empty after move |
+
+### Verification
+- [x] php -l: PASS (3 files)
+- [x] Architecture Guard: PASS (0 failures)
+- [x] Old namespace: GONE (grep = 0)
+- [x] New namespace: OK (container make() success)
+- [x] REST /vmp/v1: 10 routes (stable)
+- [x] git push: `01b10f5..22d835a main -> main`
+
+### Classification Update (Final)
+| Module | Classification |
+|--------|----------------|
+| Notification | Active |
+| Commission | Active |
+| Order | Active |
+| Subscription | Active |
+| Template | Active |
+| WhatsApp | Active |
+| AI | Active |
+| Settings | Active |
+| Vendor | Transitional (@deprecated) |
+| Product | Dead |
+| Withdrawal | Dead |
+| Report | Dead |
+| RestAPI | Dead |
+
+### Future Work (not now)
+| Item | When | Condition |
+|------|------|-----------|
+| Delete `Vendor.php` permanently | After stable release | Confirm no external plugin depends on it |
+| Remove `@deprecated` from `Vendor.php` | Together with deletion | — |
