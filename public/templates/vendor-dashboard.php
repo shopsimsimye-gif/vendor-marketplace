@@ -133,13 +133,7 @@ $nav_file = VMP_PLUGIN_DIR . 'public/templates/partials/vendor-nav.php';
                 <h2 class="vmp-card-title"><?php _e('أداء المبيعات', 'vmp'); ?></h2>
             </div>
             <div class="vmp-chart-container">
-                <?php if (class_exists('VMP\Modules\Report')) : ?>
-                    <canvas id="vmp-vendor-chart"></canvas>
-                <?php else : ?>
-                    <div class="vmp-chart-placeholder">
-                        <p><?php _e('الرسم البياني قريباً', 'vmp'); ?></p>
-                    </div>
-                <?php endif; ?>
+                <canvas id="vmp-vendor-chart"></canvas>
             </div>
         </div>
 

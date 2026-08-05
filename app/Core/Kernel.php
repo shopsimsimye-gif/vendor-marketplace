@@ -194,7 +194,6 @@ class Kernel
             'subscription',
             'whatsapp',
             'template',
-            'report',
             'notification',
             'settings',
             'ai',
