@@ -417,11 +417,31 @@ class Install {
             PRIMARY KEY (`id`)
         ) {$charset_collate};";
 
-        $tables[] = "CREATE TABLE `{$p}vmp_ai_job_locks` (
+        $tables[] = "CREATE TABLE `{$p}ai_job_locks` (
             `lock_id` VARCHAR(191) NOT NULL,
             `acquired_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             `expires_at` DATETIME NOT NULL,
             PRIMARY KEY (`lock_id`)
+        ) {$charset_collate};";
+
+        $tables[] = "CREATE TABLE `{$p}media` (
+            `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            `vendor_id` bigint(20) unsigned NOT NULL,
+            `attachment_id` bigint(20) unsigned NOT NULL,
+            `folder_id` bigint(20) unsigned NULL,
+            `type` varchar(50) NOT NULL DEFAULT 'image',
+            `mime_type` varchar(100) NOT NULL,
+            `file_size` bigint(20) unsigned NOT NULL DEFAULT 0,
+            `width` int(10) unsigned NULL,
+            `height` int(10) unsigned NULL,
+            `metadata` longtext NULL,
+            `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_vendor` (`vendor_id`),
+            KEY `idx_attachment` (`attachment_id`),
+            KEY `idx_folder` (`folder_id`),
+            KEY `idx_type` (`type`)
         ) {$charset_collate};";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';

@@ -197,6 +197,7 @@ class Kernel
             'notification',
             'settings',
             'ai',
+            'media', // ✅ وحدة الوسائط (Media Core)
         ];
 
         foreach ($modules as $module) {
