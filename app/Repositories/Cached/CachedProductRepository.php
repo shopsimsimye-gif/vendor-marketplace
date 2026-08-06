@@ -49,7 +49,7 @@ class CachedProductRepository implements ProductRepositoryInterface
 
         $product = $this->repository->find($id);
         if ($product) {
-            CacheManager::set($key, $product, 3600, self::CACHE_GROUP);
+            CacheManager::set($key, $product, CacheManager::configuredTtl(), self::CACHE_GROUP);
         }
         return $product;
     }
@@ -68,7 +68,7 @@ class CachedProductRepository implements ProductRepositoryInterface
 
         $product = $this->repository->findByProductId($product_id);
         if ($product) {
-            CacheManager::set($key, $product, 3600, self::CACHE_GROUP);
+            CacheManager::set($key, $product, CacheManager::configuredTtl(), self::CACHE_GROUP);
         }
         return $product;
     }
@@ -152,7 +152,7 @@ class CachedProductRepository implements ProductRepositoryInterface
         if ($cached !== false) return $cached;
 
         $products = $this->repository->getByVendor($vendor_id, $args);
-        CacheManager::set($key, $products, 600, self::CACHE_GROUP);
+        CacheManager::set($key, $products, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $products;
     }
 
@@ -170,7 +170,7 @@ class CachedProductRepository implements ProductRepositoryInterface
         if ($cached !== false) return (int) $cached;
 
         $count = $this->repository->countByVendor($vendor_id, $status);
-        CacheManager::set($key, $count, 600, self::CACHE_GROUP);
+        CacheManager::set($key, $count, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $count;
     }
 
@@ -187,7 +187,7 @@ class CachedProductRepository implements ProductRepositoryInterface
         if ($cached !== false) return $cached;
 
         $products = $this->repository->getPending($limit);
-        CacheManager::set($key, $products, 600, self::CACHE_GROUP);
+        CacheManager::set($key, $products, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $products;
     }
 
@@ -205,7 +205,7 @@ class CachedProductRepository implements ProductRepositoryInterface
         if ($cached !== false) return $cached;
 
         $products = $this->repository->getFeatured($vendor_id, $limit);
-        CacheManager::set($key, $products, 3600, self::CACHE_GROUP);
+        CacheManager::set($key, $products, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $products;
     }
 }

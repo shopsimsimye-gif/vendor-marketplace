@@ -173,7 +173,7 @@ class VendorApiController
                 $vendors
             );
 
-            CacheManager::set($cacheKey, $data, 300); // 5 دقائق
+            CacheManager::set($cacheKey, $data, CacheManager::configuredTtl()); // 5 دقائق
         }
 
         // ✅ إجمالي العدد للـ pagination
@@ -222,7 +222,7 @@ class VendorApiController
             }
 
             $data = VendorResource::toArray($vendor, false);
-            CacheManager::set($cacheKey, $data, 600); // 10 دقائق
+            CacheManager::set($cacheKey, $data, CacheManager::configuredTtl()); // 10 دقائق
         }
 
         return new \WP_REST_Response([

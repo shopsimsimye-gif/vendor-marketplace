@@ -139,6 +139,7 @@ $finance  = $settings['finance'] ?? [];
 $display  = $settings['display'] ?? [];
 $messages = $settings['messages'] ?? [];
 $email    = $settings['email'] ?? [];
+$cache    = $settings['cache'] ?? [];
 
 $messages['register_success'] = $messages['register_success'] ?? ($settings['registration']['register_success_message'] ?? '');
 $messages['pending_review'] = $messages['pending_review'] ?? ($settings['registration']['pending_approval_message'] ?? '');
@@ -165,6 +166,7 @@ $messages['register_rejected'] = $messages['register_rejected'] ?? ($settings['r
         <a href="#tab-email" class="vmp-admin-tab" data-tab="email"><?php _e('البريد الإلكتروني', 'vmp'); ?></a>
         <a href="#tab-display" class="vmp-admin-tab" data-tab="display"><?php _e('المظهر والصفحات', 'vmp'); ?></a>
         <a href="#tab-registration" class="vmp-admin-tab" data-tab="registration"><?php _e('تسجيل البائعين', 'vmp'); ?></a>
+        <a href="#tab-cache" class="vmp-admin-tab" data-tab="cache"><?php _e('التخزين المؤقت', 'vmp'); ?></a>
     </div>
 
     <div class="vmp-card">
@@ -763,6 +765,49 @@ $messages['register_rejected'] = $messages['register_rejected'] ?? ($settings['r
 
                 <!-- زر الحفظ -->
                 <p class="submit">
+                <!-- تبويب التخزين المؤقت -->
+                <div id="tab-cache" class="vmp-tab-content" style="display:none;">
+                    <h2><?php _e('إعدادات التخزين المؤقت', 'vmp'); ?></h2>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="vmp-cache-ttl"><?php _e('مدة التخزين المؤقت', 'vmp'); ?></label></th>
+                            <td>
+                                <select name="vmp_settings[cache][ttl]" id="vmp-cache-ttl" class="regular-text">
+                                    <?php
+                                    $cache_ttl_options = [
+                                        60     => __('دقيقة واحدة', 'vmp'),
+                                        300    => __('5 دقائق', 'vmp'),
+                                        900    => __('15 دقيقة', 'vmp'),
+                                        1800   => __('30 دقيقة', 'vmp'),
+                                        3600   => __('ساعة واحدة', 'vmp'),
+                                        21600  => __('6 ساعات', 'vmp'),
+                                        86400  => __('يوم كامل', 'vmp'),
+                                    ];
+                                    $cache_ttl_value = (int) ($cache['ttl'] ?? 1800);
+                                    foreach ($cache_ttl_options as $cache_ttl_seconds => $cache_ttl_label) {
+                                        printf(
+                                            '<option value="%d" %s>%s</option>',
+                                            (int) $cache_ttl_seconds,
+                                            selected($cache_ttl_value, (int) $cache_ttl_seconds, false),
+                                            esc_html($cache_ttl_label)
+                                        );
+                                    }
+                                    ?>
+                                </select>
+                                <p class="description"><?php _e('المدة التي تبقى فيها البيانات (البائعون، المنتجات، الطلبات، الإحصائيات) مخزنة مؤقتاً قبل إعادة جلبها من قاعدة البيانات. مدة أقصر = بيانات أحدث لكن أداء أقل.', 'vmp'); ?></p>
+                            </td>
+                        </tr>
+                    </table>
+                    <hr>
+                    <p>
+                        <button type="button" class="button" id="vmp-clear-cache" data-nonce="<?php echo wp_create_nonce('vmp_admin_nonce'); ?>">
+                            <?php _e('مسح الكاش الآن', 'vmp'); ?>
+                        </button>
+                        <span id="vmp-clear-cache-result" style="margin-inline-start:8px;"></span>
+                    </p>
+                    <p class="description"><?php _e('يمسح جميع بيانات الكاش (البائعون، المنتجات، الطلبات، الإحصائيات، نتائج الذكاء الاصطناعي) فوراً. يُستخدم بعد تغيير مدة التخزين أو عند ملاحظة بيانات قديمة.', 'vmp'); ?></p>
+                </div>
+
                     <button type="submit" class="button button-primary button-large" id="vmp-save-settings-btn">
                         <?php _e('حفظ الإعدادات', 'vmp'); ?>
                     </button>
@@ -836,6 +881,7 @@ jQuery(document).ready(function($) {
         if (!data.registration) data.registration = {};
         if (!data.messages) data.messages = {};
         if (!data.email) data.email = {};
+        if (!data.cache) data.cache = {};
 
         // التأكد من وجود جميع الحقول (حتى الغير محددة)
         ['enable_registration', 'auto_approve_vendors', 'auto_approve_products'].forEach(function(key) {
@@ -886,7 +932,8 @@ jQuery(document).ready(function($) {
                 finance: data.finance,
                 display: data.display,
                 registration: data.registration,
-                messages: data.messages
+                messages: data.messages,
+                cache: data.cache
             }
         }, function(response) {
             $btn.prop('disabled', false).text('<?php _e('حفظ الإعدادات', 'vmp'); ?>');
@@ -933,6 +980,37 @@ jQuery(function($) {
     });
 });
 
+
+
+jQuery(function($) {
+    $(document).on("click", "#vmp-clear-cache", function() {
+        var $btn = $(this);
+        var $result = $("#vmp-clear-cache-result");
+        var nonce = $btn.data("nonce");
+
+        if (!window.confirm("<?php _e('هل تريد مسح جميع بيانات الكاش؟', 'vmp'); ?>")) {
+            return;
+        }
+
+        $btn.prop("disabled", true).text("<?php _e('جاري المسح...', 'vmp'); ?>");
+        $result.removeClass("notice-success notice-error").text("");
+
+        $.post(ajaxurl, {
+            action: "vmp_admin_clear_cache",
+            nonce: nonce
+        }, function(response) {
+            $btn.prop("disabled", false).text("<?php _e('مسح الكاش الآن', 'vmp'); ?>");
+            if (response.success) {
+                $result.addClass("notice-success").text(response.data.message);
+            } else {
+                $result.addClass("notice-error").text(response.data.message);
+            }
+        }).fail(function() {
+            $btn.prop("disabled", false).text("<?php _e('مسح الكاش الآن', 'vmp'); ?>");
+            $result.addClass("notice-error").text("<?php _e('حدث خطأ في الاتصال بالخادم.', 'vmp'); ?>");
+        });
+    });
+});
 
 </script>
 

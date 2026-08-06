@@ -47,7 +47,7 @@ class CachedVendorRepository implements VendorRepositoryInterface
 
         $vendor = $this->repository->find($id);
         if ($vendor) {
-            CacheManager::set($key, $vendor, 3600, self::CACHE_GROUP);
+            CacheManager::set($key, $vendor, CacheManager::configuredTtl(), self::CACHE_GROUP);
         }
         return $vendor;
     }
@@ -66,7 +66,7 @@ class CachedVendorRepository implements VendorRepositoryInterface
 
         $vendor = $this->repository->findByUserId($user_id);
         if ($vendor) {
-            CacheManager::set($key, $vendor, 3600, self::CACHE_GROUP);
+            CacheManager::set($key, $vendor, CacheManager::configuredTtl(), self::CACHE_GROUP);
         }
         return $vendor;
     }
@@ -85,7 +85,7 @@ class CachedVendorRepository implements VendorRepositoryInterface
 
         $vendor = $this->repository->findBySlug($slug);
         if ($vendor) {
-            CacheManager::set($key, $vendor, 3600, self::CACHE_GROUP);
+            CacheManager::set($key, $vendor, CacheManager::configuredTtl(), self::CACHE_GROUP);
         }
         return $vendor;
     }
@@ -164,7 +164,7 @@ class CachedVendorRepository implements VendorRepositoryInterface
         if ($cached !== false) return $cached;
 
         $vendors = $this->repository->getAll($args);
-        CacheManager::set($key, $vendors, 600, self::CACHE_GROUP);
+        CacheManager::set($key, $vendors, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $vendors;
     }
 
@@ -197,7 +197,7 @@ class CachedVendorRepository implements VendorRepositoryInterface
         if ($cached !== false) return (int) $cached;
 
         $count = $this->repository->getCount($status);
-        CacheManager::set($key, $count, 600, self::CACHE_GROUP);
+        CacheManager::set($key, $count, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $count;
     }
 
@@ -214,7 +214,7 @@ class CachedVendorRepository implements VendorRepositoryInterface
         if ($cached !== false) return $cached;
 
         $vendors = $this->repository->getLatestPending($limit);
-        CacheManager::set($key, $vendors, 600, self::CACHE_GROUP);
+        CacheManager::set($key, $vendors, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $vendors;
     }
 
@@ -231,7 +231,7 @@ class CachedVendorRepository implements VendorRepositoryInterface
         if ($cached !== false) return $cached;
 
         $vendors = $this->repository->getActiveVendors($limit);
-        CacheManager::set($key, $vendors, 3600, self::CACHE_GROUP);
+        CacheManager::set($key, $vendors, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $vendors;
     }
 
@@ -249,7 +249,7 @@ class CachedVendorRepository implements VendorRepositoryInterface
         if ($cached !== false) return $cached;
 
         $vendors = $this->repository->search($query, $limit);
-        CacheManager::set($key, $vendors, 300, self::CACHE_GROUP);
+        CacheManager::set($key, $vendors, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $vendors;
     }
 
@@ -265,7 +265,7 @@ class CachedVendorRepository implements VendorRepositoryInterface
         if ($cached !== false) return $cached;
 
         $stats = $this->repository->getQuickStats();
-        CacheManager::set($key, $stats, 600, self::CACHE_GROUP);
+        CacheManager::set($key, $stats, CacheManager::configuredTtl(), self::CACHE_GROUP);
         return $stats;
     }
 

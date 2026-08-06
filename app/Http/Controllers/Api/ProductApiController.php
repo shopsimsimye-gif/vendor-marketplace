@@ -169,7 +169,7 @@ class ProductApiController
 
             // ✅ تخزين array مُنسق بدلاً من object
             $data = ProductResource::toArray($product);
-            CacheManager::set($cacheKey, $data, 600); // 10 دقائق
+            CacheManager::set($cacheKey, $data, CacheManager::configuredTtl()); // 10 دقائق
         }
 
         return new \WP_REST_Response([

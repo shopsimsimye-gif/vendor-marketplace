@@ -3,6 +3,7 @@ namespace VMP\Controllers;
 
 defined('ABSPATH') || exit;
 
+use VMP\Http\Requests\ClearCacheRequest;
 use VMP\Http\Requests\SaveSettingsRequest;
 use VMP\Http\Requests\GetSettingsRequest;
 use VMP\Http\Requests\MarkNoticeReadRequest;
@@ -11,6 +12,7 @@ use VMP\Http\Requests\TestEmailRequest;
 use VMP\Http\Responses\SuccessResponse;
 use VMP\Http\Responses\ErrorResponse;
 use VMP\Http\Responses\ApiResponse;
+use VMP\Support\Cache\Manager as CacheManager;
 
 /**
  * Class SettingsController
@@ -119,6 +121,56 @@ class SettingsController extends BaseController
             ]);
 
         } catch (\Exception $e) {
+            return new ErrorResponse(message: $e->getMessage(), statusCode: 500);
+        }
+    }
+
+    /**
+     * مسح كاش الإضافة بالكامل (AJAX) — تبويب «التخزين المؤقت».
+     *
+     * يمسح مجموعات Object Cache (vmp / vmp_vendors / vmp_products / vmp_ai)
+     * وجميع Transients الخاصة بالإضافة (vmp_*).
+     *
+     * @param ClearCacheRequest $request
+     * @return ApiResponse
+     */
+    public function clearCache(ClearCacheRequest $request): ApiResponse
+    {
+        try {
+            // 1) Object Cache حسب المجموعة
+            foreach (['vmp', 'vmp_vendors', 'vmp_products', 'vmp_ai'] as $group) {
+                CacheManager::flush($group);
+            }
+
+            // 2) جميع Transients الخاصة بالإضافة (احتياط لنهاية الصلاحية في DB)
+            global $wpdb;
+            $like = '_transient_vmp_%';
+            $like2 = '_transient_timeout_vmp_%';
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+                $like, $like2
+            ));
+
+            // 3) مسح الكاش العام لو كان متاحاً
+            if (function_exists('wp_cache_flush')) {
+                wp_cache_flush();
+            }
+
+            // 4) حدث للاستخدام المستقبلي
+            try {
+                $this->eventManager()->trigger('vmp_cache_cleared');
+            } catch (\Throwable $e) {
+                // تجاهل عدم وجود مستمعين
+            }
+
+            return new SuccessResponse(data: ['message' => __('تم مسح الكاش بنجاح.', 'vmp')]);
+        } catch (\Throwable $e) {
+            try {
+                $this->logger()->error('فشل مسح الكاش', ['error' => $e->getMessage()]);
+            } catch (\Throwable $logger_error) {
+                error_log('[VMP][Settings] Failed clearing cache: ' . $e->getMessage());
+            }
+
             return new ErrorResponse(message: $e->getMessage(), statusCode: 500);
         }
     }

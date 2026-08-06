@@ -13,6 +13,19 @@ class Manager
     private const DEFAULT_TTL = 300; // 5 دقائق
 
     /**
+     * الحصول على مدة تخزين الكاش من إعدادات الإضافة (vmp_settings.cache.ttl)
+     * إذا لم تُضبط، تعيد القيمة الافتراضية.
+     */
+    public static function configuredTtl(int $default = self::DEFAULT_TTL): int
+    {
+        $settings = get_option('vmp_settings', []);
+        $ttl = (int) ($settings['cache']['ttl'] ?? 0);
+
+        return $ttl > 0 ? $ttl : $default;
+    }
+
+
+    /**
      * الحصول على قيمة من الكاش
      *
      * @param string $key مفتاح الكاش
@@ -35,7 +48,7 @@ class Manager
         if (false !== $value) {
             // تخزين في Object Cache لاستخدامه مستقبلاً
             if (function_exists('wp_cache_set')) {
-                wp_cache_set($key, $value, $group, self::DEFAULT_TTL);
+                wp_cache_set($key, $value, $group, self::configuredTtl());
             }
             return $value;
         }
@@ -52,8 +65,12 @@ class Manager
      * @param string $group مجموعة الكاش
      * @return bool نجاح أو فشل العملية
      */
-    public static function set(string $key, $value, int $ttl = self::DEFAULT_TTL, string $group = self::GROUP): bool
+    public static function set(string $key, $value, int $ttl = 0, string $group = self::GROUP): bool
     {
+        if ($ttl <= 0) {
+            $ttl = self::configuredTtl();
+        }
+
         // تخزين في Object Cache
         $result = false;
         if (function_exists('wp_cache_set')) {

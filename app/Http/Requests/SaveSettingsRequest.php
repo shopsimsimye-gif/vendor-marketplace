@@ -32,6 +32,7 @@ class SaveSettingsRequest extends AbstractRequest
     {
         return [
             'vmp_settings' => ['array'],
+            'vmp_settings.cache' => ['array'],
         ];
     }
 

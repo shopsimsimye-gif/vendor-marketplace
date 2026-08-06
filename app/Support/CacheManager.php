@@ -45,6 +45,18 @@ class CacheManager
     }
 
     /**
+     * الحصول على مدة تخزين الكاش من إعدادات الإضافة (vmp_settings.cache.ttl)
+     * إذا لم تُضبط، تعيد القيمة الافتراضية (3600 ثانية = ساعة).
+     */
+    public static function configuredTtl(int $default = 3600): int
+    {
+        $settings = get_option('vmp_settings', []);
+        $ttl = (int) ($settings['cache']['ttl'] ?? 0);
+
+        return $ttl > 0 ? $ttl : $default;
+    }
+
+    /**
      * جلب قيمة من الكاش أو تخزينها إذا لم تكن موجودة
      *
      * @param string   $key     مفتاح الكاش
@@ -60,7 +72,7 @@ class CacheManager
         }
 
         $value = $callback();
-        $this->set($key, $value, $ttl);
+        $this->set($key, $value, $ttl <= 0 ? self::configuredTtl() : $ttl);
 
         return $value;
     }
@@ -89,8 +101,12 @@ class CacheManager
     /**
      * تخزين قيمة في الكاش
      */
-    public function set(string $key, mixed $value, int $ttl = 3600): bool
+    public function set(string $key, mixed $value, int $ttl = 0): bool
     {
+        if ($ttl <= 0) {
+            $ttl = self::configuredTtl();
+        }
+
         $cacheKey = $this->buildKey($key);
 
         wp_cache_set($cacheKey, $value, $this->group, $ttl);

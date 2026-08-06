@@ -92,7 +92,7 @@ class RestVendorController
         $search = sanitize_text_field($request->get_param('search'));
 
         $cacheKey = CacheManager::listKey('vendors', ['limit' => $limit, 'offset' => $offset, 'search' => $search]);
-        $data = $this->cache->remember($cacheKey, 300, function () use ($limit, $offset, $search) {
+        $data = $this->cache->remember($cacheKey, CacheManager::configuredTtl(), function () use ($limit, $offset, $search) {
             $vendors = $this->vendorRepository->getAll([
                 'status' => 'approved',
                 'limit'  => $limit,
@@ -128,7 +128,7 @@ class RestVendorController
         $id = (int) $request->get_param('id');
 
         $cacheKey = CacheManager::vendorKey($id, 'rest');
-        $data = $this->cache->remember($cacheKey, 600, function () use ($id) {
+        $data = $this->cache->remember($cacheKey, CacheManager::configuredTtl(), function () use ($id) {
             $vendor = $this->vendorRepository->find($id);
 
             if (!$vendor || $vendor->status !== 'approved') {
@@ -179,7 +179,7 @@ class RestVendorController
         }
 
         $cacheKey = CacheManager::listKey('vendor_products_' . $vendorId, ['limit' => $limit, 'offset' => $offset]);
-        $data = $this->cache->remember($cacheKey, 300, function () use ($vendorId, $limit, $offset) {
+        $data = $this->cache->remember($cacheKey, CacheManager::configuredTtl(), function () use ($vendorId, $limit, $offset) {
             $products = $this->productRepository->getByVendor($vendorId, [
                 'status' => 'approved',
                 'limit'  => $limit,

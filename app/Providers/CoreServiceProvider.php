@@ -437,6 +437,8 @@ class CoreServiceProvider extends ServiceProvider
         $registry->ajax('vmp_mark_notice_read',         SettingsController::class, 'markNoticeRead',    false, 'vmp_public_nonce',    'nonce');
         $registry->ajax('vmp_mark_all_notices_read',    SettingsController::class, 'markAllNoticesRead',false, 'vmp_public_nonce',    'nonce');
         $registry->ajax('vmp_test_email',               SettingsController::class, 'testEmail',         false, 'vmp_test_email_nonce','nonce');
+        $registry->ajax('vmp_admin_clear_cache',            SettingsController::class, 'clearCache',        false, 'vmp_admin_nonce',     'nonce');
+
 
         $registry->ajax('vmp_get_template_settings',  TemplateController::class, 'getTemplateSettings', false, 'vmp_public_nonce');
         $registry->ajax('vmp_get_templates_list',     TemplateController::class, 'getTemplatesList',  false, 'vmp_public_nonce');
