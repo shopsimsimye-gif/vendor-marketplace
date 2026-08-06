@@ -291,7 +291,17 @@ class Settings extends AbstractModule
      */
     public function add_vendor_dashboard_notice(int $vendor_id, string $title, string $message, string $type = "success"): void
     {
-        $notices = get_user_meta($vendor_id, "vmp_dashboard_notices", true);
+        // get_user_meta() is keyed by wp_users.ID, not vmp_vendors.id — resolve the WP user id
+        // from the vmp_vendors row (the vmp_vendor_id meta is stored user->vendor, not the reverse).
+        global $wpdb;
+        $user_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT user_id FROM {$wpdb->prefix}vmp_vendors WHERE id = %d LIMIT 1",
+            $vendor_id
+        ));
+        if ($user_id <= 0) {
+            return; // لا بائع مقابل لهذا المعرّف
+        }
+        $notices = get_user_meta($user_id, "vmp_dashboard_notices", true);
         if (!is_array($notices)) {
             $notices = [];
         }
@@ -310,7 +320,7 @@ class Settings extends AbstractModule
             $notices = array_slice($notices, -50);
         }
 
-        update_user_meta($vendor_id, "vmp_dashboard_notices", $notices);
+        update_user_meta($user_id, "vmp_dashboard_notices", $notices);
     }
 
     /**
@@ -333,9 +343,9 @@ class Settings extends AbstractModule
             wp_send_json_error(['message' => __('غير مصرح', 'vmp')]);
         }
 
-        $vendor_id = vmp_get_current_vendor_id();
-        if (!$vendor_id) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
+        $user_id = get_current_user_id();
+        if (!$user_id) {
+            wp_send_json_error(['message' => __('يجب تسجيل الدخول أولاً', 'vmp')]);
         }
 
         $notice_id = sanitize_text_field($_POST['notice_id'] ?? '');
@@ -343,7 +353,7 @@ class Settings extends AbstractModule
             wp_send_json_error(['message' => __('معرف الإشعار غير صالح', 'vmp')]);
         }
 
-        $notices = get_user_meta($vendor_id, 'vmp_dashboard_notices', true);
+        $notices = get_user_meta($user_id, 'vmp_dashboard_notices', true);
         if (!is_array($notices)) {
             $notices = [];
         }
@@ -355,7 +365,7 @@ class Settings extends AbstractModule
             }
         }
 
-        update_user_meta($vendor_id, 'vmp_dashboard_notices', $notices);
+        update_user_meta($user_id, 'vmp_dashboard_notices', $notices);
 
         wp_send_json_success(['message' => __('تم تحديد الإشعار كمقروء', 'vmp')]);
     }
@@ -371,17 +381,17 @@ class Settings extends AbstractModule
             wp_send_json_error(['message' => __('غير مصرح', 'vmp')]);
         }
 
-        $vendor_id = vmp_get_current_vendor_id();
-        if (!$vendor_id) {
-            wp_send_json_error(['message' => __('البائع غير موجود', 'vmp')]);
+        $user_id = get_current_user_id();
+        if (!$user_id) {
+            wp_send_json_error(['message' => __('يجب تسجيل الدخول أولاً', 'vmp')]);
         }
 
-        $notices = get_user_meta($vendor_id, 'vmp_dashboard_notices', true);
+        $notices = get_user_meta($user_id, 'vmp_dashboard_notices', true);
         if (is_array($notices)) {
             foreach ($notices as &$notice) {
                 $notice['read'] = true;
             }
-            update_user_meta($vendor_id, 'vmp_dashboard_notices', $notices);
+            update_user_meta($user_id, 'vmp_dashboard_notices', $notices);
         }
 
         wp_send_json_success(['message' => __('تم تحديد جميع الإشعارات كمقروءة', 'vmp')]);

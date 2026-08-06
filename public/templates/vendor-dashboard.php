@@ -215,7 +215,7 @@ $nav_file = VMP_PLUGIN_DIR . 'public/templates/partials/vendor-nav.php';
                 </div>
                 <div id="vmp-vendor-notices">
                     <?php
-                    $notices = get_user_meta($vendor_id, 'vmp_dashboard_notices', true);
+                    $notices = get_user_meta($user_id, 'vmp_dashboard_notices', true);
                     if (empty($notices)) : ?>
                         <p style="text-align:center; color:var(--vmp-text-muted); padding: 20px;">
                             <?php _e('لا توجد إشعارات.', 'vmp'); ?>

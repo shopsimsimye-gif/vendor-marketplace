@@ -380,7 +380,7 @@ class Subscription extends AbstractModule
 
         // إضافة إشعار في لوحة تحكم البائع
         $this->addVendorDashboardNotice(
-            (int) $vendor->id,
+            isset($vendor->user_id) ? (int) $vendor->user_id : (int) $vendor->id,
             $subject,
             $message,
             $status === 'approved' ? 'success' : 'error'
@@ -435,9 +435,9 @@ class Subscription extends AbstractModule
     /**
      * إضافة إشعار في لوحة تحكم البائع
      */
-    private function addVendorDashboardNotice(int $vendor_id, string $title, string $message, string $type = 'success'): void
+    private function addVendorDashboardNotice(int $user_id, string $title, string $message, string $type = 'success'): void
     {
-        $notices = get_user_meta($vendor_id, 'vmp_dashboard_notices', true);
+        $notices = get_user_meta($user_id, 'vmp_dashboard_notices', true);
         if (!is_array($notices)) {
             $notices = [];
         }
@@ -456,7 +456,7 @@ class Subscription extends AbstractModule
             $notices = array_slice($notices, -50);
         }
 
-        update_user_meta($vendor_id, 'vmp_dashboard_notices', $notices);
+        update_user_meta($user_id, 'vmp_dashboard_notices', $notices);
     }
 
     /**

@@ -131,9 +131,9 @@ class SettingsController extends BaseController
      */
     public function markNoticeRead(MarkNoticeReadRequest $request): ApiResponse
     {
-        $vendor_id = vmp_get_current_vendor_id();
-        if (!$vendor_id) {
-            return new ErrorResponse(message: __('البائع غير موجود', 'vmp'), statusCode: 404);
+        $user_id = get_current_user_id();
+        if (!$user_id) {
+            return new ErrorResponse(message: __('يجب تسجيل الدخول أولاً.', 'vmp'), statusCode: 404);
         }
 
         $notice_id = sanitize_text_field((string) ($_POST['notice_id'] ?? ''));
@@ -141,7 +141,7 @@ class SettingsController extends BaseController
             return new ErrorResponse(message: __('معرف الإشعار غير صالح', 'vmp'), statusCode: 400);
         }
 
-        $notices = get_user_meta($vendor_id, 'vmp_dashboard_notices', true);
+        $notices = get_user_meta($user_id, 'vmp_dashboard_notices', true);
         if (!is_array($notices)) {
             $notices = [];
         }
@@ -153,7 +153,7 @@ class SettingsController extends BaseController
             }
         }
 
-        update_user_meta($vendor_id, 'vmp_dashboard_notices', $notices);
+        update_user_meta($user_id, 'vmp_dashboard_notices', $notices);
 
         return new SuccessResponse(data: ['message' => __('تم تحديد الإشعار كمقروء', 'vmp')]);
     }
@@ -166,17 +166,17 @@ class SettingsController extends BaseController
      */
     public function markAllNoticesRead(MarkAllNoticesReadRequest $request): ApiResponse
     {
-        $vendor_id = vmp_get_current_vendor_id();
-        if (!$vendor_id) {
-            return new ErrorResponse(message: __('البائع غير موجود', 'vmp'), statusCode: 404);
+        $user_id = get_current_user_id();
+        if (!$user_id) {
+            return new ErrorResponse(message: __('يجب تسجيل الدخول أولاً.', 'vmp'), statusCode: 404);
         }
 
-        $notices = get_user_meta($vendor_id, 'vmp_dashboard_notices', true);
+        $notices = get_user_meta($user_id, 'vmp_dashboard_notices', true);
         if (is_array($notices)) {
             foreach ($notices as &$notice) {
                 $notice['read'] = true;
             }
-            update_user_meta($vendor_id, 'vmp_dashboard_notices', $notices);
+            update_user_meta($user_id, 'vmp_dashboard_notices', $notices);
         }
 
         return new SuccessResponse(data: ['message' => __('تم تحديد جميع الإشعارات كمقروءة', 'vmp')]);
