@@ -37,6 +37,7 @@ use VMP\Modules\AI\ProviderHealthScore;
 use VMP\Modules\AI\RetryPolicy;
 use VMP\Support\CacheManager;
 use VMP\Services\SubscriptionService;
+use VMP\Services\MediaService;
 
 class AIServiceProvider extends ServiceProvider
 {
@@ -142,7 +143,8 @@ class AIServiceProvider extends ServiceProvider
         $this->container->singleton(AIProductController::class, fn(): AIProductController => new AIProductController(
             $this->container->make(VendorRepositoryInterface::class),
             $this->container->make(AIProductDraftService::class),
-            $this->container->make(SubscriptionService::class)
+            $this->container->make(SubscriptionService::class),
+            $this->container->make(MediaService::class)
         ));
     }
 

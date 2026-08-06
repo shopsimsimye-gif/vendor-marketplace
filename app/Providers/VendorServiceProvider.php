@@ -505,10 +505,17 @@ class VendorServiceProvider extends ServiceProvider
                 wp_enqueue_script(
                     'vmp-ai-product-js',
                     VMP_PLUGIN_URL . 'public/js/vendor-ai-product.js',
-                    ['jquery', 'vmp-public'],
+                    ['jquery', 'vmp-public', 'media-editor'],
                     VMP_VERSION,
                     true
                 );
+
+                // Phase 4: AI + Media Library integration data (wp.media needs media-editor above).
+                wp_localize_script('vmp-ai-product-js', 'vmp_media', [
+                    'ajax_url' => admin_url('admin-ajax.php'),
+                    'nonce'    => wp_create_nonce('vmp_public_nonce'),
+                    'user_id'  => get_current_user_id(),
+                ]);
             }
 
             // ─── 8b. تحميل ملفات التسجيل في صفحة التسجيل ───

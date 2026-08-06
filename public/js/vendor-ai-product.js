@@ -375,4 +375,65 @@
             });
         });
     });
+
+// === Phase 4: AI + Media Library integration ===
+(function($) {
+    'use strict';
+
+    var aiMediaFrame;
+
+    // 1. Pick an existing image from the vendor's Media Library.
+    $(document).on('click', '#vmp-ai-select-image', function(e) {
+        e.preventDefault();
+        if (aiMediaFrame) { aiMediaFrame.open(); return; }
+
+        aiMediaFrame = wp.media({
+            title: 'اختر صورة للمنتج',
+            button: { text: 'استخدام هذه الصورة' },
+            multiple: false,
+            library: { type: 'image', author: (vmp_media && vmp_media.user_id) ? vmp_media.user_id : '' }
+        });
+
+        aiMediaFrame.on('select', function() {
+            var att = aiMediaFrame.state().get('selection').first().toJSON();
+            $('#vmp-ai-image-id').val(att.id);
+            $('#vmp-ai-picked-preview').html('<img src="' + (att.sizes && att.sizes.medium ? att.sizes.medium.url : att.url) + '" style="max-width:200px;border-radius:4px;">').prop('hidden', false);
+            $('#vmp-ai-remove-image').show();
+        });
+
+        aiMediaFrame.open();
+    });
+
+    // 2. Remove the picked image.
+    $(document).on('click', '#vmp-ai-remove-image', function(e) {
+        e.preventDefault();
+        $('#vmp-ai-image-id').val('0');
+        $('#vmp-ai-picked-preview').empty().prop('hidden', true);
+        $(this).hide();
+    });
+
+    // 3. Save an AI-generated (or external) image URL into the Media Library.
+    window.vmpSaveAIGeneratedImage = function(imageUrl, imageName) {
+        if (!imageUrl) return;
+        if (!vmp_media || !vmp_media.ajax_url) return;
+
+        $.post(vmp_media.ajax_url, {
+            action: 'vmp_ai_save_image',
+            image_url: imageUrl,
+            image_name: imageName || 'ai-generated-product.png',
+            mime_type: 'image/png',
+            nonce: vmp_media.nonce
+        }, function(response) {
+            if (response && response.success) {
+                $('#vmp-ai-image-id').val(response.data.media.id);
+                $('#vmp-ai-picked-preview').html('<img src="' + response.data.url + '" style="max-width:200px;border-radius:4px;">').prop('hidden', false);
+                $('#vmp-ai-remove-image').show();
+            } else {
+                alert((response && response.data && response.data.message) || 'فشل الحفظ');
+            }
+        });
+    };
+
+})(jQuery);
+
 })(jQuery);

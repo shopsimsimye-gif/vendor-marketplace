@@ -6,6 +6,7 @@ defined('ABSPATH') || exit;
 use VMP\Contracts\VendorRepositoryInterface;
 use VMP\Services\SubscriptionService;
 use VMP\Modules\AI\Services\AIProductDraftService;
+use VMP\Services\MediaService;
 
 /**
  * Class AIProductController
@@ -19,7 +20,8 @@ class AIProductController
     public function __construct(
         private VendorRepositoryInterface $vendors,
         private AIProductDraftService $drafts,
-        private SubscriptionService $subscriptionService
+        private SubscriptionService $subscriptionService,
+        private MediaService $mediaService
     ) {
     }
 
@@ -161,6 +163,46 @@ class AIProductController
      * @throws \\RuntimeException Diagnostic error when triggered.
      * @return void Output payload.
      */
+    /**
+     * AJAX: Save an AI-generated (or externally-provided) image URL into
+     * the vendor's Media Library and record it via MediaService::createFromAI().
+     *
+     * Post params: image_url, image_name, mime_type, nonce (vmp_public_nonce).
+     *
+     * @return void Output payload.
+     */
+    public function saveGeneratedImage(): void
+    {
+        try {
+            $this->verifyRequest();
+
+            $vendor = $this->currentVendor();
+
+            $imageData = [
+                'url'  => esc_url_raw(wp_unslash($_POST['image_url'] ?? '')),
+                'name' => sanitize_file_name(wp_unslash($_POST['image_name'] ?? 'ai-generated.png')),
+                'mime' => sanitize_text_field(wp_unslash($_POST['mime_type'] ?? 'image/png')),
+            ];
+
+            if (empty($imageData['url'])) {
+                throw new \RuntimeException(__('رابط الصورة مفقود.', 'vmp'));
+            }
+
+            $media = $this->mediaService->createFromAI($imageData, (int) $vendor->id);
+
+            if (!$media) {
+                throw new \RuntimeException(__('فشل حفظ الصورة في مكتبة الوسائط.', 'vmp'));
+            }
+
+            wp_send_json_success([
+                'media' => $media->toArray(),
+                'url'   => wp_get_attachment_url($media->attachmentId),
+            ]);
+        } catch (\Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
+    }
+
     private function verifyRequest(): void
     {
         if (!check_ajax_referer('vmp_public_nonce', 'nonce', false)) {

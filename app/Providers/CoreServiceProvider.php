@@ -416,6 +416,7 @@ class CoreServiceProvider extends ServiceProvider
         $registry->ajax('vmp_ai_get_job_timeline',          AIProductController::class, 'getJobTimeline', false, 'vmp_public_nonce', 'nonce');
         $registry->ajax('vmp_ai_regenerate_product_part',   AIProductController::class, 'regenerate',     false, 'vmp_public_nonce', 'nonce');
         $registry->ajax('vmp_ai_publish_product_draft',     AIProductController::class, 'publish',        false, 'vmp_public_nonce', 'nonce');
+        $registry->ajax('vmp_ai_save_image',               AIProductController::class, 'saveGeneratedImage', false, 'vmp_public_nonce', 'nonce');
 
         // ─── Template Routes (نُقلت من VMP\Modules\Template add_action إلى Controller — [QA 2026-08-02]) ───
         $registry->ajax('vmp_save_template',          TemplateController::class, 'saveTemplate',      false, 'vmp_public_nonce');

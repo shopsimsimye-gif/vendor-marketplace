@@ -97,6 +97,111 @@ class MediaService
         return $media;
     }
 
+    /**
+     * Save an AI-generated (or external) image into the vendor media library.
+     *
+     * Uses wp_handle_sideload() because the file comes from download_url(),
+     * not from $_FILES (wp_handle_upload() relies on move_uploaded_file()
+     * which only works for HTTP POST uploads).
+     *
+     * @param array $imageData ['url' => '...', 'name' => '...', 'mime' => 'image/png']
+     * @param int   $vendorId  Attachment author (vendor user id).
+     * @return MediaDTO|null
+     */
+    public function createFromAI(array $imageData, int $vendorId): ?MediaDTO
+    {
+        if (empty($imageData['url'])) {
+            return null;
+        }
+
+        if (!function_exists('download_url')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $tmpFile = download_url($imageData['url']);
+        if (is_wp_error($tmpFile)) {
+            return null;
+        }
+
+        try {
+            $fileArray = [
+                'name'     => sanitize_file_name($imageData['name'] ?? 'ai-generated.png'),
+                'tmp_name' => $tmpFile,
+                'type'     => $imageData['mime'] ?? 'image/png',
+                'error'    => 0,
+                'size'     => filesize($tmpFile) ?: 0,
+            ];
+
+            if (($fileArray['size'] ?? 0) > self::MAX_FILE_SIZE) {
+                throw new \RuntimeException(__('File exceeds maximum size of 10MB', 'vendor-marketplace'));
+            }
+
+            // Sideload (copy) the downloaded temp file into the uploads dir.
+            $uploaded = wp_handle_sideload($fileArray, ['test_form' => false]);
+            if (isset($uploaded['error']) || empty($uploaded['file'])) {
+                throw new \RuntimeException($uploaded['error'] ?? __('Upload failed', 'vendor-marketplace'));
+            }
+
+            // Real MIME check (finfo) — reject anything outside ALLOWED_MIMES.
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $realMime = $finfo->file($uploaded['file']);
+            if (!in_array($realMime, self::ALLOWED_MIMES, true)) {
+                wp_delete_file($uploaded['file']);
+                throw new \RuntimeException(__('Invalid file type detected', 'vendor-marketplace'));
+            }
+
+            if (!function_exists('wp_generate_attachment_metadata')) {
+                require_once ABSPATH . 'wp-admin/includes/image.php';
+            }
+
+            $attachmentId = wp_insert_attachment([
+                'post_title'   => $fileArray['name'],
+                'post_content' => '',
+                'post_status'  => 'inherit',
+                'post_author'  => $vendorId,
+            ], $uploaded['file']);
+
+            if (is_wp_error($attachmentId)) {
+                wp_delete_file($uploaded['file']);
+                throw new \RuntimeException($attachmentId->get_error_message());
+            }
+
+            $metadata = wp_generate_attachment_metadata($attachmentId, $uploaded['file']);
+            wp_update_attachment_metadata($attachmentId, $metadata);
+
+            $imageSize = $this->getImageDimensions($uploaded['file'], $metadata);
+            $realFileSize = filesize($uploaded['file']) ?: 0;
+
+            $dto = new MediaDTO(
+                vendorId: $vendorId,
+                attachmentId: (int) $attachmentId,
+                type: $this->resolveType($realMime),
+                mimeType: $realMime,
+                fileSize: (int) $realFileSize,
+                width: $imageSize['width'],
+                height: $imageSize['height'],
+                metadata: $metadata,
+            );
+
+            $media = $this->repository->create($dto);
+
+            do_action('vmp_media_uploaded', $media);
+
+            $eventManager = Container::getInstance()->get('event_manager');
+            if ($eventManager) {
+                $eventManager->trigger('vmp_media_uploaded', $media);
+            }
+
+            return $media;
+        } catch (\Throwable $e) {
+            // Clean up any leftover downloaded temp file.
+            if (file_exists($tmpFile)) {
+                @unlink($tmpFile);
+            }
+            return null;
+        }
+    }
+
     public function selectAttachment(int $attachmentId, int $vendorId): MediaDTO
     {
         $existing = $this->repository->findByAttachment($attachmentId);

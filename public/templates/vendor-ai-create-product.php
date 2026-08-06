@@ -49,6 +49,21 @@ $nav_file = VMP_PLUGIN_DIR . 'public/templates/partials/vendor-nav.php';
 
                 <div id="vmp-ai-image-preview" class="vmp-ai-image-preview" hidden></div>
 
+                <!-- Phase 4: AI + Media Library — pick an existing image instead of uploading -->
+                <div class="vmp-form-group vmp-ai-media-pick">
+                    <label><?php _e('أو اختر من مكتبة الوسائط', 'vmp'); ?></label>
+                    <input type="hidden" name="ai_image_id" id="vmp-ai-image-id" value="0">
+                    <div class="vmp-ai-media-actions">
+                        <button type="button" id="vmp-ai-select-image" class="vmp-btn vmp-btn-outline vmp-btn-sm">
+                            <?php _e('اختر من المكتبة', 'vmp'); ?>
+                        </button>
+                        <button type="button" id="vmp-ai-remove-image" class="vmp-btn vmp-btn-outline vmp-btn-sm vmp-ai-danger" style="display:none;">
+                            <?php _e('إزالة', 'vmp'); ?>
+                        </button>
+                    </div>
+                    <div id="vmp-ai-picked-preview" class="vmp-ai-image-preview" hidden></div>
+                </div>
+
                 <button type="submit" class="vmp-btn vmp-btn-primary vmp-btn-block">
                     <?php _e('إنشاء المسودة', 'vmp'); ?>
                 </button>
