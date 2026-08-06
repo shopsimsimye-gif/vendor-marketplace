@@ -112,12 +112,16 @@ $categories = get_terms([
 
             <div class="vmp-form-group">
                 <label><?php _e('صورة المنتج الرئيسية', 'vmp'); ?></label>
-                <div class="vmp-image-upload">
-                    <input type="hidden" name="image_id" value="0">
-                    <img src="" class="vmp-image-preview" alt="Preview" style="display:none;">
-                    <div class="upload-icon">📸</div>
-                    <p><?php _e('انقر لاختيار صورة', 'vmp'); ?></p>
-                </div>
+                <div id="vmp-featured-preview" style="margin-bottom:10px;"></div>
+                <input type="hidden" name="image_id" id="image_id" value="0">
+                <button type="button" id="vmp-select-featured" class="vmp-btn vmp-btn-outline vmp-btn-sm"><?php _e('اختر من المكتبة', 'vmp'); ?></button>
+                <button type="button" id="vmp-remove-featured" class="vmp-btn vmp-btn-outline vmp-btn-sm" style="display:none;color:#b32d2e;"><?php _e('إزالة', 'vmp'); ?></button>
+            </div>
+
+            <div class="vmp-form-group">
+                <label><?php _e('معرض الصور', 'vmp'); ?></label>
+                <div id="vmp-gallery-wrap" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;"></div>
+                <button type="button" id="vmp-add-gallery" class="vmp-btn vmp-btn-outline vmp-btn-sm"><?php _e('إضافة صور', 'vmp'); ?></button>
             </div>
 
             <div style="margin-top: 30px;">

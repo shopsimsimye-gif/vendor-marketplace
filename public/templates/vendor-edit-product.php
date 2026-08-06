@@ -124,17 +124,35 @@ $commission_rate = $plan ? (float) $plan->commission_rate : 10;
                 </div>
             </div>
 
+            <?php
+            $current_image_id = (int) $wc_product->get_image_id();
+            $current_gallery   = $wc_product->get_gallery_image_ids();
+            ?>
             <div class="vmp-form-group">
                 <label><?php _e('صورة المنتج الرئيسية', 'vmp'); ?></label>
-                <div class="vmp-image-upload">
-                    <input type="hidden" name="image_id" value="<?php echo (int) $wc_product->get_image_id(); ?>">
-                    <?php 
-                    $image_url = wp_get_attachment_url($wc_product->get_image_id());
-                    ?>
-                    <img src="<?php echo esc_url($image_url); ?>" class="vmp-image-preview <?php echo $image_url ? 'show' : ''; ?>" alt="Preview" style="<?php echo $image_url ? 'display:block;' : 'display:none;'; ?>">
-                    <div class="upload-icon" style="<?php echo $image_url ? 'display:none;' : ''; ?>">📸</div>
-                    <p style="<?php echo $image_url ? 'display:none;' : ''; ?>"><?php _e('انقر لاختيار صورة', 'vmp'); ?></p>
+                <div id="vmp-featured-preview" style="margin-bottom:10px;">
+                    <?php if ($current_image_id) : ?>
+                        <img src="<?php echo esc_url(wp_get_attachment_url($current_image_id)); ?>" alt="Featured" style="max-width:180px;border-radius:6px;">
+                    <?php endif; ?>
                 </div>
+                <input type="hidden" name="image_id" id="image_id" value="<?php echo esc_attr($current_image_id); ?>">
+                <button type="button" id="vmp-select-featured" class="vmp-btn vmp-btn-outline vmp-btn-sm"><?php _e('اختر من المكتبة', 'vmp'); ?></button>
+                <button type="button" id="vmp-remove-featured" class="vmp-btn vmp-btn-outline vmp-btn-sm" style="display:<?php echo $current_image_id ? 'inline-block' : 'none'; ?>;color:#b32d2e;"><?php _e('إزالة', 'vmp'); ?></button>
+            </div>
+
+            <div class="vmp-form-group">
+                <label><?php _e('معرض الصور', 'vmp'); ?></label>
+                <div id="vmp-gallery-wrap" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+                    <?php foreach ((array) $current_gallery as $gid) : ?>
+                        <?php $gid = (int) $gid; if ($gid <= 0) { continue; } ?>
+                        <div class="vmp-gallery-item" style="position:relative;display:inline-block;margin:5px;">
+                            <input type="hidden" name="gallery_image_ids[]" value="<?php echo esc_attr($gid); ?>">
+                            <img src="<?php echo esc_url(wp_get_attachment_url($gid)); ?>" alt="Gallery" style="width:80px;height:80px;object-fit:cover;border-radius:6px;">
+                            <button type="button" class="vmp-remove-gallery" style="position:absolute;top:-8px;right:-8px;width:20px;height:20px;background:#b32d2e;color:#fff;border:none;border-radius:50%;cursor:pointer;line-height:20px;text-align:center;">×</button>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <button type="button" id="vmp-add-gallery" class="vmp-btn vmp-btn-outline vmp-btn-sm"><?php _e('إضافة صور', 'vmp'); ?></button>
             </div>
 
             <div style="margin-top: 30px;">

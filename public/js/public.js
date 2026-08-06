@@ -363,3 +363,96 @@
     $(document).ready(function () { VMP.init(); });
 
 })(jQuery);
+
+/* ============================================================
+ * Media Library Integration (Phase 3) — Featured + Gallery
+ * Delegated handlers so they work for both add & edit product.
+ * (Attached to document; safe even if buttons render later.)
+ * ============================================================ */
+(function ($) {
+    'use strict';
+
+    var featuredFrame = null;
+    var galleryFrame = null;
+
+    var cfg = (typeof window.vmp_media !== 'undefined' && window.vmp_media) ? window.vmp_media : {};
+
+    /* ---- Featured image ---- */
+    $(document).on('click', '#vmp-select-featured', function (e) {
+        e.preventDefault();
+
+        if (featuredFrame) {
+            featuredFrame.open();
+            return;
+        }
+
+        featuredFrame = wp.media({
+            title: cfg.i18n ? (cfg.i18n.selectFeaturedImage || 'اختر الصورة الرئيسية') : 'اختر الصورة الرئيسية',
+            library: { type: 'image' },
+            button: { text: cfg.i18n ? (cfg.i18n.useThisMedia || 'استخدم هذه الصورة') : 'استخدم هذه الصورة' },
+            multiple: false
+        });
+
+        featuredFrame.on('select', function () {
+            var attachment = featuredFrame.state().get('selection').first().toJSON();
+            if (!attachment || !attachment.id) { return; }
+
+            $('#image_id').val(attachment.id);
+            $('#vmp-featured-preview').html(
+                '<img src="' + (attachment.sizes && attachment.sizes.medium ? attachment.sizes.medium.url : attachment.url) + '" alt="' + (attachment.alt || '') + '" style="max-width:180px;border-radius:6px;">'
+            );
+            $('#vmp-remove-featured').show();
+        });
+
+        featuredFrame.open();
+    });
+
+    $(document).on('click', '#vmp-remove-featured', function (e) {
+        e.preventDefault();
+        $('#image_id').val(0);
+        $('#vmp-featured-preview').html('');
+        $(this).hide();
+    });
+
+    /* ---- Gallery ---- */
+    $(document).on('click', '#vmp-add-gallery', function (e) {
+        e.preventDefault();
+
+        if (galleryFrame) {
+            galleryFrame.open();
+            return;
+        }
+
+        galleryFrame = wp.media({
+            title: cfg.i18n ? (cfg.i18n.addToGallery || 'إضافة إلى المعرض') : 'إضافة إلى المعرض',
+            library: { type: 'image' },
+            button: { text: cfg.i18n ? (cfg.i18n.addToGallery || 'إضافة إلى المعرض') : 'إضافة إلى المعرض' },
+            multiple: true
+        });
+
+        galleryFrame.on('select', function () {
+            var selection = galleryFrame.state().get('selection').toJSON();
+
+            selection.forEach(function (attachment) {
+                if (!attachment || !attachment.id) { return; }
+                // Avoid duplicates
+                if ($('#vmp-gallery-wrap input[name="gallery_image_ids[]"][value="' + attachment.id + '"]').length) { return; }
+
+                var imgUrl = (attachment.sizes && attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url);
+                var item = $('<div class="vmp-gallery-item" style="position:relative;display:inline-block;margin:5px;">')
+                    .append('<input type="hidden" name="gallery_image_ids[]" value="' + attachment.id + '">')
+                    .append('<img src="' + imgUrl + '" alt="' + (attachment.alt || '') + '" style="width:80px;height:80px;object-fit:cover;border-radius:6px;">')
+                    .append('<button type="button" class="vmp-remove-gallery" style="position:absolute;top:-8px;right:-8px;width:20px;height:20px;background:#b32d2e;color:#fff;border:none;border-radius:50%;cursor:pointer;line-height:20px;text-align:center;">×</button>');
+                $('#vmp-gallery-wrap').append(item);
+            });
+        });
+
+        galleryFrame.open();
+    });
+
+    $(document).on('click', '.vmp-remove-gallery', function (e) {
+        e.preventDefault();
+        $(this).closest('.vmp-gallery-item').remove();
+    });
+
+})(jQuery);

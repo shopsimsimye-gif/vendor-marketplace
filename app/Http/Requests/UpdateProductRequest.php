@@ -73,6 +73,51 @@ class UpdateProductRequest extends AbstractRequest
             $data['product_id'] = (int) $data['vendor_product_id'];
         }
 
+        // ── Media Library Integration (Phase 3): تحقق ملكية الوسائط ──
+        $imageId = (int) $this->get('image_id', 0);
+        $galleryIds = $this->get('gallery_image_ids', []);
+        $galleryIds = is_array($galleryIds) ? array_map('intval', $galleryIds) : [];
+
+        $vendorId = get_current_user_id();
+        try {
+            $mediaRepo = Container::getInstance()->make(\VMP\Contracts\MediaRepositoryInterface::class);
+        } catch (\Exception $e) {
+            $mediaRepo = null;
+        }
+
+        // الصورة الرئيسية
+        if ($imageId > 0) {
+            $media = $mediaRepo ? $mediaRepo->findByAttachment($imageId) : null;
+            $wpAttachment = get_post($imageId); // $imageId = attachment_id (معرّف WP)
+
+            $isOwner = ($media && (int) $media->vendorId === $vendorId)
+                    || ($wpAttachment && (int) $wpAttachment->post_author === $vendorId);
+
+            if (!$isOwner) {
+                $imageId = 0;
+            }
+        }
+
+        // معرض الصور
+        $validGallery = [];
+        foreach ($galleryIds as $gid) {
+            $gid = (int) $gid;
+            if ($gid <= 0) { continue; }
+            $media = $mediaRepo ? $mediaRepo->findByAttachment($gid) : null;
+            $wpAttachment = get_post($gid); // $gid = attachment_id
+
+            $isOwner = ($media && (int) $media->vendorId === $vendorId)
+                    || ($wpAttachment && (int) $wpAttachment->post_author === $vendorId);
+
+            if ($isOwner) {
+                $validGallery[] = $gid;
+            }
+        }
+
+        $data['image_id']          = $imageId;
+        $data['gallery_image_ids'] = $validGallery;
+        // ── End Media Verification ──
+
         return ProductDTO::fromArray($data);
     }
 
@@ -92,6 +137,7 @@ class UpdateProductRequest extends AbstractRequest
             'manage_stock'      => ['nullable', 'string', 'in:yes,no'],
             'stock_quantity'    => ['nullable', 'integer', 'min:0'],
             'image_id'          => ['nullable', 'integer', 'min:1'],
+            'gallery_image_ids' => ['array'],
         ];
     }
 
@@ -111,6 +157,7 @@ class UpdateProductRequest extends AbstractRequest
             'manage_stock'      => __('إدارة المخزون', 'vmp'),
             'stock_quantity'    => __('كمية المخزون', 'vmp'),
             'image_id'          => __('الصورة الرئيسية', 'vmp'),
+            'gallery_image_ids' => __('معرض الصور', 'vmp'),
         ];
     }
 
