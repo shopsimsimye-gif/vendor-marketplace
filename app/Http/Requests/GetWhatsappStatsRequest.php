@@ -20,8 +20,7 @@ class GetWhatsappStatsRequest extends AbstractRequest
      */
     public function authorize(): bool
     {
-        return current_user_can('vmp_view_whatsapp_stats')
-            || current_user_can('vmp_vendor_stats')
+        return current_user_can('vmp_vendor')
             || current_user_can('vmp_manage_orders');
     }
 

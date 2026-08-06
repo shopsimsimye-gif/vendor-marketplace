@@ -702,6 +702,40 @@ class Install {
     }
 
     /**
+     * [QA 2026-08-06] Self-heal: إعادة منح صلاحيات VMP الإدارية لمستخدمي دور Shop Manager.
+     *
+     * كانت الصلاحيات تُمنح فقط عند تفعيل/ترقية الإضافة (setup_roles)، فيفقدها
+     * shop_manager بعد أي sync/نشر متأخر. هذه الدالة تُستدعى من init وتعيد المنح
+     * مرة واحدة فقط عند الفقدان (has_cap guard) فلا تسبب كتابة DB متكررة.
+     *
+     * @return void
+     */
+    public static function ensure_shop_manager_caps(): void {
+        $role = get_role('shop_manager');
+        if (!$role) {
+            return;
+        }
+
+        $caps = [
+            'vmp_manage_vendors',
+            'vmp_manage_products',
+            'vmp_manage_orders',
+            'vmp_manage_commissions',
+            'vmp_manage_withdrawals',
+            'vmp_manage_reports',
+            'vmp_manage_settings',
+            'vmp_manage_subscriptions',
+            'manage_vmp_requests',
+        ];
+
+        foreach ($caps as $cap) {
+            if (!$role->has_cap($cap)) {
+                $role->add_cap($cap, true);
+            }
+        }
+    }
+
+    /**
      * Create cron jobs.
      *
      * Schedules daily and weekly maintenance tasks.

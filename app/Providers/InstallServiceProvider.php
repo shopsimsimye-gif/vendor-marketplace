@@ -33,6 +33,11 @@ class InstallServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // ── [QA 2026-08-06] Self-heal لصلاحيات Shop Manager (منح مرة واحدة عند الفقدان) ──
+        add_action('init', static function (): void {
+            \VMP\Core\Install::ensure_shop_manager_caps();
+        }, 3);
+
         add_action('init', static function (): void {
             $current_db = get_option('vmp_db_version', '0.0.0');
             if (version_compare($current_db, VMP_VERSION, '<') && !get_transient('vmp_upgrade_lock')) {
