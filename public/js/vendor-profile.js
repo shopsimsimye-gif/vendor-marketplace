@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 var frame = wp.media({
                     title: VMP_DATA.i18n.chooseImage,
-                    library: { type: 'image' },
+                    library: { type: 'image', author: VMP_DATA.userId },
                     multiple: false
                 });
 

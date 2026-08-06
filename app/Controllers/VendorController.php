@@ -225,8 +225,8 @@ class VendorController extends BaseController
                 'whatsapp_number' => function_exists('sanitize_text_field') && function_exists('wp_unslash')
                     ? sanitize_text_field(wp_unslash($_POST['whatsapp_number'] ?? ''))
                     : ((string) ($_POST['whatsapp_number'] ?? '')),
-                'store_logo' => (int) ($_POST['store_logo'] ?? 0),
-                'store_banner' => (int) ($_POST['store_banner'] ?? 0),
+                'store_logo' => $this->ownedAttachmentId($_POST['store_logo'] ?? 0, $userId),
+                'store_banner' => $this->ownedAttachmentId($_POST['store_banner'] ?? 0, $userId),
             ];
 
             $updatedVendor = $this->vendorService->updateProfile((int) $vendor->id, $vendorData);
@@ -249,6 +249,29 @@ class VendorController extends BaseController
                 statusCode: 500
             );
         }
+    }
+
+    /**
+     * يتحقق من أن معرّف المرفق مملوك للمستخدم الحالي (نفس منطق Phase 3 للمنتجات).
+     * - 0 تعني إزالة الصورة (مسموح دائماً).
+     * - أي معرّف غير مملوك يُرفض ويُعاد 0 بدلاً من حفظ مرفق بائع آخر.
+     */
+    private function ownedAttachmentId(mixed $raw, int $userId): int
+    {
+        $attachmentId = (int) $raw;
+        if ($attachmentId <= 0) {
+            return 0;
+        }
+        if (!function_exists('get_post')) {
+            return 0;
+        }
+        $attachment = get_post($attachmentId);
+        $isOwned = $attachment && (int) $attachment->post_author === $userId;
+        if ($isOwned) {
+            return $attachmentId;
+        }
+        error_log('[VMP][VendorController] Rejected non-owned attachment ' . $attachmentId . ' for user ' . $userId);
+        return 0;
     }
 
     private function vendorRepository(): VendorRepositoryInterface
