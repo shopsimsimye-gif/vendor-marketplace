@@ -26,10 +26,13 @@ use VMP\Contracts\OrderRepositoryInterface;
 use VMP\Services\VendorService;
 use VMP\Support\Cache\Manager as CacheManager;
 use VMP\Http\Resources\VendorResource;
+use VMP\Http\Controllers\Api\Traits\VendorAuthHelpers;
 
 class VendorApiController
 {
     private const NAMESPACE = 'vmp/v1';
+
+    use VendorAuthHelpers;
 
     public function __construct(
         private VendorRepositoryInterface  $vendorRepository,
@@ -106,38 +109,6 @@ class VendorApiController
     }
 
     // ─── Permission Callbacks ────────────────────────────────────────────────
-
-    /**
-     * التحقق من أن المستخدم بائع معتمد
-     *
-     * @param \WP_REST_Request $request
-     * @return bool|\WP_Error
-     */
-    public function requiresVendor(\WP_REST_Request $request)
-    {
-        if (!is_user_logged_in()) {
-            return new \WP_Error(
-                'unauthorized',
-                __('يجب تسجيل الدخول أولاً.', 'vmp'),
-                ['status' => 401]
-            );
-        }
-
-        $vendor = $this->vendorRepository->findByUserId(get_current_user_id());
-
-        if (!$vendor || $vendor->status !== 'approved') {
-            return new \WP_Error(
-                'forbidden',
-                __('يجب أن تكون بائعاً معتمداً.', 'vmp'),
-                ['status' => 403]
-            );
-        }
-
-        // ✅ تخزين البائع في الطلب لتجنب تكرار الـ DB query
-        $request->set_param('__vendor', $vendor);
-
-        return true;
-    }
 
     // ─── Handlers ────────────────────────────────────────────────────────────
 
@@ -374,36 +345,6 @@ class VendorApiController
     // ─── Formatters ─────────────────────────────────────────────────────────
 
     /**
-     * تنسيق منتج للـ API
-     *
-     * @param object $product
-     * @return array
-     */
-    private function formatProductForApi(object $product): array
-    {
-        $productId = (int) ($product->product_id ?? $product->id ?? 0);
-
-        // ✅ استخدام wc_get_product بدلاً من get_the_title (أكثر أماناً في REST context)
-        $wcProduct = $productId > 0 ? wc_get_product($productId) : null;
-        $title     = $wcProduct ? $wcProduct->get_name() : ($product->title ?? '');
-
-        $price = (float) ($product->price ?? 0);
-
-        return [
-            'id'           => $productId,
-            'title'        => (string) $title,
-            'price'        => $price,
-            'price_html'   => function_exists('wc_price') ? wc_price($price) : null,
-            'status'       => (string) ($product->status ?? ''),
-            'stock_status' => (string) ($product->stock_status ?? 'instock'),
-            'image_url'    => $this->getAttachmentUrl(
-                (int) ($wcProduct ? $wcProduct->get_image_id() : get_post_thumbnail_id($productId)),
-                'woocommerce_thumbnail'
-            ),
-        ];
-    }
-
-    /**
      * تنسيق طلب للـ API
      *
      * @param object $order
@@ -423,22 +364,6 @@ class VendorApiController
         ];
     }
 
-    /**
-     * الحصول على رابط مرفق
-     *
-     * @param int    $attachmentId
-     * @param string $size
-     * @return string
-     */
-    private function getAttachmentUrl(int $attachmentId, string $size = 'thumbnail'): string
-    {
-        if ($attachmentId <= 0) {
-            return '';
-        }
-        $url = wp_get_attachment_image_url($attachmentId, $size);
-        return $url ? (string) $url : '';
-    }
-
     // ─── Cache Invalidation Helpers ─────────────────────────────────────────
 
     /**
@@ -450,7 +375,9 @@ class VendorApiController
     public static function clearVendorCache(int $vendorId): void
     {
         CacheManager::delete('api_vendor_' . $vendorId);
-        CacheManager::delete('api_vendors_'); // wildcard delete إن كان مدعوماً
+        // [QA 2026-08-06] delete('api_vendors_') كان مفتاحاً غير موجود (لا effect).
+        // deleteByPrefix() يستخدم سجل vmp_cache_keys_ لتطهير كل مفاتيح القائمة.
+        CacheManager::deleteByPrefix('api_vendors_');
     }
 
     /**
@@ -460,14 +387,9 @@ class VendorApiController
      */
     public static function clearVendorsListCache(): void
     {
-        // ✅ يفترض أن CacheManager يدعم delete by pattern أو prefix
-        // إذا لم يكن مدعوماً، استخدم transient keys معروفة
-        global $wpdb;
-        $wpdb->query(
-            "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_api_vendors_%'"
-        );
-        $wpdb->query(
-            "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_api_vendors_%'"
-        );
+        // [QA 2026-08-06] كان SQL خام على wp_options بمفتاح _transient_api_vendors_%
+        // الذي لا يُطابق مفاتيح الـ transient الفعلية (vmp_ + md5)، فيحذف صفّاً
+        // بقيمة صفر. الحل الصحيح عبر CacheManager::deleteByPrefix().
+        CacheManager::deleteByPrefix('api_vendors_');
     }
 }
