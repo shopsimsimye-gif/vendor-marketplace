@@ -83,7 +83,7 @@
                 title: vmp_media.i18n.selectOrUpload,
                 button: { text: vmp_media.i18n.useThisMedia },
                 multiple: false,
-                library: { type: 'image' }
+                library: { type: 'image', author: vmp_media.user_id }
             });
 
             this.frame.on('select', () => {

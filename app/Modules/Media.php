@@ -51,6 +51,7 @@ class Media extends AbstractModule
         wp_localize_script('vmp-media-library', 'vmp_media', [
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce'    => wp_create_nonce('vmp_public_nonce'),
+            'user_id'  => get_current_user_id(),
             'i18n'     => [
                 'selectOrUpload' => __('Select or Upload Media', 'vendor-marketplace'),
                 'useThisMedia'   => __('Use this media', 'vendor-marketplace'),
