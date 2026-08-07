@@ -319,7 +319,7 @@ class VendorServiceProvider extends ServiceProvider
 
     /**
      * تحميل أصول الإضافة (CSS/JS) – النسخة النهائية المحسنة
-     * ✅ تحميل wp_enqueue_media() شرطياً (فقط في صفحات رفع الملفات أو في أي صفحة VMP)
+     * ✅ wp_enqueue_media() removed - VMPMediaPicker handles all media
      * ✅ تحميل vendor-products.js شرطياً (فقط في صفحة المنتجات)
      * ✅ كائن JS واحد يحتوي كل شيء (vmp_public)
      * ✅ nonce واحد للتطبيق العامة (vmp_public.nonce)
@@ -376,6 +376,34 @@ class VendorServiceProvider extends ServiceProvider
     /**
      * معدل العمولة للمستخدم الحالي (يطابق منطق vendor-edit-product.php).
      */
+    /**
+     * ترجمة مكوّن اختيار الوسائط (VMPMediaPicker).
+     *
+     * @return array<string,string>
+     */
+    private function mediaPickerI18n(): array
+    {
+        return [
+            'mediaLibrary'  => __('مكتبة الوسائط', 'vmp'),
+            'uploadNew'     => __('رفع جديد', 'vmp'),
+            'search'        => __('بحث…', 'vmp'),
+            'useThisMedia'  => __('استخدم هذه الوسائط', 'vmp'),
+            'addToGallery'  => __('إضافة إلى المعرض', 'vmp'),
+            'uploadSuccess' => __('تم الرفع بنجاح.', 'vmp'),
+            'uploadError'   => __('فشل الرفع. حاول مرة أخرى.', 'vmp'),
+            'networkError'  => __('خطأ في الاتصال. حاول مرة أخرى.', 'vmp'),
+            'deleted'       => __('تم الحذف بنجاح.', 'vmp'),
+            'delete'        => __('حذف', 'vmp'),
+            'confirmDelete' => __('هل أنت متأكد من حذف هذا الملف؟', 'vmp'),
+            'noMedia'       => __('لا توجد ملفات وسائط.', 'vmp'),
+            'loadMore'      => __('تحميل المزيد', 'vmp'),
+            'done'          => __('تم', 'vmp'),
+            'cancel'        => __('إلغاء', 'vmp'),
+            'loadError'     => __('تعذر تحميل الوسائط.', 'vmp'),
+            'files'         => __('ملف', 'vmp'),
+        ];
+    }
+
     private function currentUserCommissionRate(): float
     {
         $vendor = $this->vendorForCurrentUser();
@@ -468,11 +496,6 @@ class VendorServiceProvider extends ServiceProvider
                     $current_page = 'register';
                 }
             }
-
-            // ─── 5. Force load wp_enqueue_media() for any VMP page to avoid missing media scripts
-            // Some themes or page builders might not print required REST settings; we also provide a fallback below.
-            wp_enqueue_media();
-
             // ─── 6. تحميل ملفات التصميم (CSS) ───
             wp_enqueue_style(
                 'vmp-public',
@@ -485,17 +508,32 @@ class VendorServiceProvider extends ServiceProvider
             wp_enqueue_script(
                 'vmp-public',
                 VMP_PLUGIN_URL . 'public/js/public.js',
-                ['jquery', 'media-editor'],
+                ['jquery'],
                 VMP_VERSION,
                 true
             );
+
+            // ─── 7b. VMP Media Picker (reusable component) ───
+            wp_enqueue_style('vmp-media-picker', VMP_PLUGIN_URL . 'public/css/media/picker.css', ['vmp-public'], VMP_VERSION);
+            wp_enqueue_script('vmp-media-picker', VMP_PLUGIN_URL . 'public/js/media/picker.js', ['jquery'], VMP_VERSION, true);
 
             // ─── 8. تحميل JS المنتجات فقط في صفحة المنتجات ───
             if (in_array($current_page, ['products', 'add-product', 'edit-product'], true)) {
                 wp_enqueue_script(
                     'vmp-products-js',
                     VMP_PLUGIN_URL . 'public/js/vendor-products.js',
-                    ['jquery', 'vmp-public', 'media-editor'],
+                    ['jquery', 'vmp-media-picker'],
+                    VMP_VERSION,
+                    true
+                );
+            }
+
+            // ─── 8a. Add Product page - featured/gallery picker ──
+            if ($current_page === 'add-product') {
+                wp_enqueue_script(
+                    'vmp-add-product-js',
+                    VMP_PLUGIN_URL . 'public/js/vendor-add-product.js',
+                    ['jquery', 'vmp-media-picker'],
                     VMP_VERSION,
                     true
                 );
@@ -505,17 +543,14 @@ class VendorServiceProvider extends ServiceProvider
                 wp_enqueue_script(
                     'vmp-ai-product-js',
                     VMP_PLUGIN_URL . 'public/js/vendor-ai-product.js',
-                    ['jquery', 'vmp-public', 'media-editor'],
+                    ['jquery', 'vmp-media-picker'],
                     VMP_VERSION,
                     true
                 );
 
-                // Phase 4: AI + Media Library integration data (wp.media needs media-editor above).
-                wp_localize_script('vmp-ai-product-js', 'vmp_media', [
-                    'ajax_url' => admin_url('admin-ajax.php'),
-                    'nonce'    => wp_create_nonce('vmp_public_nonce'),
-                    'user_id'  => get_current_user_id(),
-                ]);
+                // Phase 4: AI + Media Library integration.
+                // vmp_media is now global via vmp-media-picker dependency.
+                // [QA 2026-08-07] Removed duplicate vmp_media localization; VMPMediaPicker uses vmp_media from vmp-public.
             }
 
             // ─── 8b. تحميل ملفات التسجيل في صفحة التسجيل ───
@@ -564,7 +599,7 @@ class VendorServiceProvider extends ServiceProvider
 
             if ($current_page === 'profile') {
                 wp_enqueue_style('vmp-profile-css', VMP_PLUGIN_URL . 'public/css/vendor-profile.css', ['vmp-public'], VMP_VERSION);
-                wp_enqueue_script('vmp-profile-js', VMP_PLUGIN_URL . 'public/js/vendor-profile.js', ['jquery', 'vmp-public', 'media-editor'], VMP_VERSION, true);
+                wp_enqueue_script('vmp-profile-js', VMP_PLUGIN_URL . 'public/js/vendor-profile.js', ['jquery', 'vmp-media-picker'], VMP_VERSION, true);
                 wp_localize_script('vmp-profile-js', 'vmp_profile_data', $this->profileJsData());
             }
 
@@ -603,9 +638,17 @@ class VendorServiceProvider extends ServiceProvider
             }
 
             if ($current_page === 'edit-product') {
-                wp_enqueue_script('vmp-edit-product-js', VMP_PLUGIN_URL . 'public/js/vendor-edit-product.js', ['jquery', 'vmp-public'], VMP_VERSION, true);
+                wp_enqueue_script('vmp-edit-product-js', VMP_PLUGIN_URL . 'public/js/vendor-edit-product.js', ['jquery', 'vmp-media-picker'], VMP_VERSION, true);
                 wp_localize_script('vmp-edit-product-js', 'vmp_edit_product_data', ['commissionRate' => $this->currentUserCommissionRate()]);
             }
+
+            // ─── 9a. vmp_media = Single Source of Truth (Engine for all VMP pages) ───
+            wp_localize_script('vmp-public', 'vmp_media', [
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce'    => wp_create_nonce('vmp_public_nonce'),
+                'user_id'  => get_current_user_id(),
+                'i18n'     => $this->mediaPickerI18n(),
+            ]);
 
             // ─── 9. كائن واحد يحتوي كل شيء (بدون تكرار) ───
             wp_localize_script('vmp-public', 'vmp_public', [

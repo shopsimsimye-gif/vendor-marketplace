@@ -22,14 +22,14 @@ $vendor_id = get_current_user_id();
             <span class="dashicons dashicons-upload"></span>
             <?php esc_html_e('Upload New', 'vendor-marketplace'); ?>
         </button>
-        <button type="button" id="vmp-media-select" class="button secondary">
-            <span class="dashicons dashicons-format-gallery"></span>
-            <?php esc_html_e('Select from WordPress', 'vendor-marketplace'); ?>
-        </button>
         <div class="vmp-media-stats">
             <span id="vmp-media-count">0</span> <?php esc_html_e('files', 'vendor-marketplace'); ?>
         </div>
     </div>
+
+    <!-- [QA 2026-08-07] Hidden file input for direct upload via vmp_media_upload.
+         Bypasses wp.media/plupload/async-upload.php entirely. -->
+    <input type="file" id="vmp-media-file-input" accept="image/jpeg,image/png,image/gif,image/webp,image/avif,video/mp4,video/webm,application/pdf" style="display:none;">
 
     <div id="vmp-media-grid"></div>
 

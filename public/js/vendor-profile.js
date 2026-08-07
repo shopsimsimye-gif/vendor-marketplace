@@ -125,8 +125,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ── رفع الصور (Media Uploader) ──
-    if (typeof wp !== 'undefined' && wp.media) {
+    // ── رفع الصور (VMP Media Picker — Logo / Banner) ──
+    // [QA 2026-08-07] Migrated from wp.media to VMPMediaPicker (single source of truth)
+    if (typeof window.VMPMediaPicker !== 'undefined' && window.VMPMediaPicker && typeof $ !== 'undefined') {
         document.querySelectorAll('.vmp-image-upload').forEach(function(container) {
             var input = container.querySelector('input[type="hidden"]');
             var preview = container.querySelector('.vmp-image-preview');
@@ -138,25 +139,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (e.target.closest('.vmp-remove-image')) return;
                 e.preventDefault();
 
-                var frame = wp.media({
-                    title: VMP_DATA.i18n.chooseImage,
-                    library: { type: 'image', author: VMP_DATA.userId },
-                    multiple: false
+                window.VMPMediaPicker.open({
+                    mode: 'single',
+                    type: 'image',
+                    uploadEnabled: true,
+                    onSelect: function(items) {
+                        if (!items || !items.length) return;
+                        var attachmentId = items[0].attachment_id || items[0].id;
+                        var url = items[0].url || '';
+
+                        input.value = attachmentId;
+                        preview.src = url;
+                        preview.classList.add('show');
+                        if (icon) icon.style.display = 'none';
+                        if (text) text.style.display = 'none';
+                        if (removeBtn) removeBtn.style.display = 'flex';
+                    }
                 });
-
-                frame.on('select', function() {
-                    var attachment = frame.state().get('selection').first().toJSON();
-                    if (!attachment.id || !attachment.url) return;
-
-                    input.value = attachment.id;
-                    preview.src = attachment.url;
-                    preview.classList.add('show');
-                    if (icon) icon.style.display = 'none';
-                    if (text) text.style.display = 'none';
-                    if (removeBtn) removeBtn.style.display = 'flex';
-                });
-
-                frame.open();
             });
 
             if (removeBtn) {

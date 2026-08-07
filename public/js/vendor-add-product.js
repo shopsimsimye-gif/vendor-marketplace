@@ -1,7 +1,9 @@
 /**
- * Vendor Marketplace - Edit Product Page
+ * Vendor Marketplace - Add Product Page
  * Handles: Featured image & Gallery selection via VMPMediaPicker
  * Dependencies: jquery, vmp-media-picker (which provides vmp_media + VMPMediaPicker)
+ * 
+ * This mirrors vendor-edit-product.js but for new product creation (no pre-existing images).
  */
 (function ($) {
     'use strict';
@@ -24,6 +26,9 @@
         var $removeFeaturedBtn = $('#vmp-remove-featured');
         var $galleryWrap = $('#vmp-gallery-wrap');
         var $addGalleryBtn = $('#vmp-add-gallery');
+
+        // Initially hide remove button (no featured image on new product)
+        $removeFeaturedBtn.hide();
 
         // ── Featured Image Selection ──
         $selectFeaturedBtn.on('click', function () {
@@ -101,10 +106,5 @@
             return String(str).replace(/&/g, '&').replace(/"/g, '"').replace(/'/g, '&#039;').replace(/</g, '<').replace(/>/g, '>');
         }
     });
-
-    // Commission rate is provided via window.vmp_edit_product_data (localized)
-    window.vmp_commission_rate = (typeof window.vmp_edit_product_data !== 'undefined' && window.vmp_edit_product_data.commissionRate)
-        ? window.vmp_edit_product_data.commissionRate
-        : null;
 
 })(jQuery);

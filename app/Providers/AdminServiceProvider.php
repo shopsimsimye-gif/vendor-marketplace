@@ -106,11 +106,6 @@ class AdminServiceProvider extends ServiceProvider
                 return;
             }
 
-            // Ensure WP media scripts are available in admin VMP pages (for image picker)
-            if (function_exists('wp_enqueue_media')) {
-                wp_enqueue_media();
-            }
-
             // ── الأنماط (CSS) ──
             wp_enqueue_style('vmp-admin', VMP_PLUGIN_URL . 'admin/css/admin.css', [], VMP_VERSION);
 

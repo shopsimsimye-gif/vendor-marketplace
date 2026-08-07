@@ -31,8 +31,6 @@ class Media extends AbstractModule
             return;
         }
 
-        wp_enqueue_media();
-
         wp_enqueue_style(
             'vmp-media-library',
             VMP_PLUGIN_URL . 'public/css/media-library.css',
@@ -53,12 +51,30 @@ class Media extends AbstractModule
             'nonce'    => wp_create_nonce('vmp_public_nonce'),
             'user_id'  => get_current_user_id(),
             'i18n'     => [
-                'selectOrUpload' => __('Select or Upload Media', 'vendor-marketplace'),
-                'useThisMedia'   => __('Use this media', 'vendor-marketplace'),
-                'confirmDelete'  => __('Are you sure you want to delete this file?', 'vendor-marketplace'),
-                'delete'         => __('Delete', 'vendor-marketplace'),
-                'noMedia'        => __('No media files found.', 'vendor-marketplace'),
+                'selectOrUpload'   => __('Select or Upload Media', 'vendor-marketplace'),
+                'useThisMedia'     => __('Use this media', 'vendor-marketplace'),
+                'confirmDelete'    => __('Are you sure you want to delete this file?', 'vendor-marketplace'),
+                'delete'           => __('Delete', 'vendor-marketplace'),
+                'noMedia'          => __('No media files found.', 'vendor-marketplace'),
+                'uploadError'      => __('Upload failed. Please try again.', 'vendor-marketplace'),
+                'uploadSuccess'    => __('Uploaded successfully.', 'vendor-marketplace'),
+                'networkError'     => __('Network error. Please try again.', 'vendor-marketplace'),
+                'deleted'          => __('Deleted successfully.', 'vendor-marketplace'),
+                'selected'         => __('Selected.', 'vendor-marketplace'),
+                'cancel'           => __('Cancel', 'vendor-marketplace'),
+                'confirm'          => __('Confirm', 'vendor-marketplace'),
+                'mediaUnavailable' => __('Media library is not available.', 'vendor-marketplace'),
             ],
+        ]);
+
+        // [QA 2026-08-07] wp.media على الواجهة الأمامية يرفع عبر REST /wp/v2/media ويحتاج wpApiSettings.
+        // core يطبع wpApiSettings في الواجهة الأمامية فقط عند استدعاء wp-api-fetch؛ نضمنه هنا fallback.
+        if (wp_script_is('wp-api-fetch', 'registered') && !wp_script_is('wp-api-fetch', 'enqueued')) {
+            wp_enqueue_script('wp-api-fetch');
+        }
+        wp_localize_script('wp-api-fetch', 'wpApiSettings', [
+            'root'  => esc_url_raw(rest_url()),
+            'nonce' => wp_create_nonce('wp_rest'),
         ]);
     }
 

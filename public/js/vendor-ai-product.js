@@ -377,31 +377,33 @@
     });
 
 // === Phase 4: AI + Media Library integration ===
+// [QA 2026-08-07] Migrated from wp.media to VMPMediaPicker (single source of truth).
 (function($) {
     'use strict';
-
-    var aiMediaFrame;
 
     // 1. Pick an existing image from the vendor's Media Library.
     $(document).on('click', '#vmp-ai-select-image', function(e) {
         e.preventDefault();
-        if (aiMediaFrame) { aiMediaFrame.open(); return; }
 
-        aiMediaFrame = wp.media({
+        if (typeof window.VMPMediaPicker === 'undefined') {
+            alert('مكوّن اختيار الوسائط غير محمل');
+            return;
+        }
+
+        window.VMPMediaPicker.open({
+            mode: 'single',
+            type: 'image',
             title: 'اختر صورة للمنتج',
-            button: { text: 'استخدام هذه الصورة' },
-            multiple: false,
-            library: { type: 'image', author: (vmp_media && vmp_media.user_id) ? vmp_media.user_id : '' }
-        });
+            onSelect: function(items) {
+                if (!items || !items.length) { return; }
+                var attachmentId = items[0].attachment_id || items[0].id;
+                var url = items[0].url || '';
 
-        aiMediaFrame.on('select', function() {
-            var att = aiMediaFrame.state().get('selection').first().toJSON();
-            $('#vmp-ai-image-id').val(att.id);
-            $('#vmp-ai-picked-preview').html('<img src="' + (att.sizes && att.sizes.medium ? att.sizes.medium.url : att.url) + '" style="max-width:200px;border-radius:4px;">').prop('hidden', false);
-            $('#vmp-ai-remove-image').show();
+                $('#vmp-ai-image-id').val(attachmentId);
+                $('#vmp-ai-picked-preview').html('<img src="' + url + '" style="max-width:200px;border-radius:4px;">').prop('hidden', false);
+                $('#vmp-ai-remove-image').show();
+            }
         });
-
-        aiMediaFrame.open();
     });
 
     // 2. Remove the picked image.
@@ -433,5 +435,4 @@
             }
         });
     };
-})(jQuery);
 })(jQuery);

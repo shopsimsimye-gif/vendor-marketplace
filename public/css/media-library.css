@@ -170,3 +170,73 @@
     inset: 0;
     background: rgba(255,255,255,.7) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="%232271b1" stroke-width="8" fill="none" stroke-dasharray="60 90"><animateTransform attributeName="transform" type="rotate" from="0 50 50" to="360 50 50" dur="1s" repeatCount="indefinite"/></circle></svg>') center/48px no-repeat;
 }
+
+/* [QA 2026-08-07] Unified toast notifications (replaces alert()) */
+#vmp-media-toasts {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 360px;
+}
+
+.vmp-toast {
+    padding: 12px 16px;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.vmp-toast-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.vmp-toast-hiding {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+
+.vmp-toast-success { background: #2271b1; }
+.vmp-toast-error   { background: #d63638; }
+.vmp-toast-info    { background: #2c3338; }
+
+/* [QA 2026-08-07] Unified confirm modal (replaces confirm()) */
+.vmp-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 100001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vmp-confirm-modal {
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    padding: 24px;
+    max-width: 400px;
+    width: calc(100% - 40px);
+}
+
+.vmp-confirm-message {
+    margin: 0 0 20px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.vmp-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}

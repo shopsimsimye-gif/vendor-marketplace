@@ -43,11 +43,6 @@ $banner_url = ($vendor->store_banner && wp_attachment_is_image($vendor->store_ba
 
 $user = wp_get_current_user();
 
-// ── التأكد من تحميل wp.media ──
-if (!did_action('wp_enqueue_media')) {
-    wp_enqueue_media();
-}
-
 // ── بناء رابط المتجر ──
 $store_base = get_option('vmp_store_base', 'store');
 $store_slug = !empty($vendor->store_slug) ? $vendor->store_slug : sanitize_title($vendor->store_name);
