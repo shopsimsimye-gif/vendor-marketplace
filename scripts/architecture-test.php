@@ -55,6 +55,7 @@ function deadMethodAtLine(array $live,int $ln,array $dead):?string{ksort($live);
 function nsConstValue(array $live):string{foreach($live as $c){if(preg_match("/(?:const|define)\(?\s*NAMESPACE\s*[,=]\s*['\"]([^'\"]+)['\"]/i",$c,$m))return $m[1];}return '';}
 
 $phpFiles=phpFiles($root.'/app');
+$requestFiles=phpFiles($root.'/app/Http/Requests');
 $directAjax=[];$registered=[];$dupActions=[];$perFile=[];
 $restLive=[];   // 'ns|path' => [loc]
 $restUnallowed=[];
@@ -150,6 +151,44 @@ foreach($registered as $action=>$entry){
         if(preg_match('/([A-Za-z0-9_\\\\]+)\s+\$request/',$mm[1],$pm)){ $rc=ltrim($pm[1],'\\');$rs=substr($rc,strrpos($rc,'\\')!==false?strrpos($rc,'\\')+1:0);
             if(!is_file($reqDir.'/'.$rs.'.php')) fail("RouteRegistry '$action' -> {$entry['controller']}::{$entry['method']} missing request class '$rc'.");}
 }
+
+// ─── 8. If any Request uses the 'nullable' rule, the validation engine
+// MUST support it. (applyRule: nullable => null, empty values allowed.)
+$usesNullable=false;
+foreach($phpFiles as $f){
+    if(!str_contains($f,'/Http/Requests/')) continue;
+    $content=file_get_contents($f);
+    $clean=preg_replace('#/\*.*?\*/#s','',preg_replace('#//.*#','',$content));
+    if(preg_match("/(?:'|\")nullable(?:'|\")/",$clean)){$usesNullable=true;break;}
+}
+if($usesNullable){
+    $engine=file_get_contents($root.'/app/Http/Requests/AbstractRequest.php');
+    // Engine support = 'nullable' token appears anywhere inside applyRule
+    // (token matches a string literal, not just a comment). strpos is exact
+    // and avoids quoting pitfalls of regex in shell-invoked PHP.
+    $engineHasNullable = strpos($engine, "'nullable'") !== false;
+    if(!$engineHasNullable){
+        fail("Requests use 'nullable' rule but AbstractRequest::applyRule does not support it — runtime InvalidArgumentException.");
+    }
+}
+
+// ─── 9. Requests must NEVER trust vendor_id coming from input ───
+// Ownership must be derived from get_current_user_id() inside the
+// Request (resolveVendorId) — a POSTed vendor_id is attacker-controlled.
+foreach($requestFiles as $f){
+    if(!str_contains($f,'/Http/Requests/')) continue;
+    $rel=substr($f,strlen($root)+1);
+    $content=file_get_contents($f);
+    // Guard: any Request whose rules() declares vendor_id is suspect; and
+    // reading vendor_id directly from $this->data without resolveVendorId.
+    if(preg_match("/\['vendor_id'\]\s*=>/",$content)){
+        fail("Request $rel should NOT accept vendor_id in rules() — identity must come from auth context (get_current_user_id()).");
+    }
+    if(preg_match("/\$data\['vendor_id'\]\s*=\s*\$this->get\('vendor_id'/",$content)){
+        fail("Request $rel copies vendor_id from input — ownership must be derived from the authenticated user.");
+    }
+}
+if(!isset($requestFiles)){$requestFiles=[];}
 
 echo "\n".str_repeat('=',60)."\n";
 echo PREFIX."Summary\n";

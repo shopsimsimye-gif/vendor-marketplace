@@ -166,6 +166,29 @@ class VendorServiceProvider extends ServiceProvider
             return $content;
         }, 10, 1);
 
+        // ─── 4b. منع فهرسة صفحات البائع الداخلية (noindex معماري) ───
+        // صفحات لوحة البائع (?vmp_page=…) ليست صفحات عامة قابلة للفهرسة.
+        // نستخدم wp_robots (WP 5.7+) بدل إضافة <meta> عشوائي داخل القوالب.
+        add_filter('wp_robots', function (array $robots): array {
+            $page = sanitize_key($_GET['vmp_page'] ?? '');
+            $internal_pages = [
+                'dashboard', 'products', 'add-product', 'ai-create-product',
+                'edit-product', 'orders', 'profile', 'withdrawals', 'subscriptions',
+            ];
+            $is_store_query = (bool) get_query_var('vendor_store');
+
+            if ($is_store_query) {
+                return $robots; // صفحة المتجر العامة تبقى قابلة للفهرسة
+            }
+
+            if ($page && in_array($page, $internal_pages, true)) {
+                $robots['noindex']  = true;
+                $robots['nofollow'] = true;
+            }
+
+            return $robots;
+        }, 10, 1);
+
         // ─── 5. تسجيل الشورت كودات (تعمل دائماً) ───
         $this->registerShortcodes();
 
@@ -400,7 +423,10 @@ class VendorServiceProvider extends ServiceProvider
             'done'          => __('تم', 'vmp'),
             'cancel'        => __('إلغاء', 'vmp'),
             'loadError'     => __('تعذر تحميل الوسائط.', 'vmp'),
-            'files'         => __('ملف', 'vmp'),
+            'files'           => __('ملف', 'vmp'),
+            'removeImage'     => __('إزالة الصورة', 'vmp'),
+            'productImage'    => __('صورة المنتج', 'vmp'),
+            'productImageAlt' => __('صورة المنتج: ', 'vmp'),
         ];
     }
 
@@ -530,6 +556,13 @@ class VendorServiceProvider extends ServiceProvider
 
             // ─── 8a. Add Product page - featured/gallery picker ──
             if ($current_page === 'add-product') {
+                wp_enqueue_style(
+                    'vmp-add-product-css',
+                    VMP_PLUGIN_URL . 'public/css/vendor-add-product.css',
+                    ['vmp-public'],
+                    VMP_VERSION
+                );
+
                 wp_enqueue_script(
                     'vmp-add-product-js',
                     VMP_PLUGIN_URL . 'public/js/vendor-add-product.js',

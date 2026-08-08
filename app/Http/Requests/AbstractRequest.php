@@ -136,6 +136,12 @@ abstract class AbstractRequest
             return null;
         }
 
+        // nullable: يعلن أن الحقل اختياري — القيم الفارغة مقبولة صراحة
+        // (القيم غير الفارغة تستمر في التحقق من بقية القواعد)
+        if ($ruleName === 'nullable') {
+            return null;
+        }
+
         return match ($ruleName) {
             'required'  => null,
             'string'    => !is_string($value)

@@ -28,19 +28,11 @@ class CreateProductRequest extends AbstractRequest
     {
         $data = $this->validated();
 
-        // 1. تعيين vendor_id
-        if (empty($data['vendor_id'])) {
-            $userId = get_current_user_id();
-            try {
-                $vendorRepo = Container::getInstance()->make(VendorRepositoryInterface::class);
-                $vendor = $vendorRepo->findByUserId($userId);
-                if ($vendor) {
-                    $data['vendor_id'] = (int) $vendor->id;
-                }
-            } catch (\Exception $e) {
-                $data['vendor_id'] = (int) get_user_meta($userId, 'vmp_vendor_id', true);
-            }
-        }
+        // 1. تعيين vendor_id من سياق المصادقة حصراً (أمان)
+        // ⚠️ لا نثق أبداً بـ vendor_id القادم من POST — مصدر الهوية هو
+        // get_current_user_id() (المستخدم المصادق عليه)، ونبني vendor_id
+        // داخلياً للتوافق مع طبقة الدومين.
+        $data = $this->resolveVendorId($data);
 
         // 2. تحويل product_name → title
         if (isset($data['product_name'])) {
@@ -154,5 +146,40 @@ class CreateProductRequest extends AbstractRequest
             'product_name.min'       => __('اسم المنتج يجب أن يكون 3 أحرف على الأقل.', 'vmp'),
             'regular_price.required' => __('السعر الأساسي مطلوب.', 'vmp'),
         ];
+    }
+
+    /**
+     * اشتقاق vendor_id من سياق المصادقة فقط — يتجاهل أي قيمة من POST.
+     *
+     * @param array $data
+     * @return array
+     */
+    private function resolveVendorId(array $data): array
+    {
+        $userId = get_current_user_id();
+        if ($userId <= 0) {
+            unset($data['vendor_id']);
+            return $data;
+        }
+
+        try {
+            $vendorRepo = Container::getInstance()->make(VendorRepositoryInterface::class);
+            $vendor = $vendorRepo->findByUserId($userId);
+            if ($vendor) {
+                $data['vendor_id'] = (int) $vendor->id;
+                return $data;
+            }
+        } catch (\Exception $e) {
+            // نتابع إلى fallback
+        }
+
+        $vendorId = (int) get_user_meta($userId, 'vmp_vendor_id', true);
+        if ($vendorId > 0) {
+            $data['vendor_id'] = $vendorId;
+        } else {
+            unset($data['vendor_id']);
+        }
+
+        return $data;
     }
 }

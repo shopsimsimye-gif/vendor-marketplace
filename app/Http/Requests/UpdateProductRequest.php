@@ -29,27 +29,11 @@ class UpdateProductRequest extends AbstractRequest
     {
         $data = $this->validated();
 
-        // تعيين vendor_id من المستخدم الحالي
-        if (empty($data['vendor_id'])) {
-            try {
-                $userId = get_current_user_id();
-                $vendorRepo = Container::getInstance()->make(VendorRepositoryInterface::class);
-                $vendor = $vendorRepo->findByUserId($userId);
-                if ($vendor) {
-                    $data['vendor_id'] = (int) $vendor->id;
-                } else {
-                    $vendorId = (int) get_user_meta($userId, 'vmp_vendor_id', true);
-                    if ($vendorId > 0) {
-                        $data['vendor_id'] = $vendorId;
-                    }
-                }
-            } catch (\Exception $e) {
-                $vendorId = (int) get_user_meta(get_current_user_id(), 'vmp_vendor_id', true);
-                if ($vendorId > 0) {
-                    $data['vendor_id'] = $vendorId;
-                }
-            }
-        }
+        // تعيين vendor_id من سياق المصادقة حصراً (أمان)
+        // ⚠️ لا نثق أبداً بـ vendor_id القادم من POST — مصدر الهوية هو
+        // get_current_user_id() (المستخدم المصادق عليه)، ونبني vendor_id
+        // داخلياً للتوافق مع طبقة الدومين.
+        $data = $this->resolveVendorId($data);
 
         // تحويل الحقول من النموذج إلى ProductDTO
         if (isset($data['product_name'])) {
@@ -130,13 +114,13 @@ class UpdateProductRequest extends AbstractRequest
             'vendor_product_id' => ['required', 'integer', 'min:1'],
             'product_name'      => ['required', 'string', 'min:3', 'max:255'],
             'regular_price'     => ['required', 'numeric', 'min:0'],
-            'sale_price'        => ['nullable', 'numeric', 'min:0'],
-            'category'          => ['nullable', 'integer', 'min:1'],
-            'short_description' => ['nullable', 'string', 'max:500'],
-            'description'       => ['nullable', 'string'],
-            'manage_stock'      => ['nullable', 'string', 'in:yes,no'],
-            'stock_quantity'    => ['nullable', 'integer', 'min:0'],
-            'image_id'          => ['nullable', 'integer', 'min:1'],
+            'sale_price'        => ['numeric', 'min:0'],
+            'category'          => ['integer', 'min:1'],
+            'short_description' => ['string', 'max:500'],
+            'description'       => ['string'],
+            'manage_stock'      => ['string', 'in:yes,no'],
+            'stock_quantity'    => ['integer', 'min:0'],
+            'image_id'          => ['integer', 'min:1'],
             'gallery_image_ids' => ['array'],
         ];
     }
@@ -175,5 +159,40 @@ class UpdateProductRequest extends AbstractRequest
             'category.integer'           => __('التصنيف يجب أن يكون رقماً صحيحاً.', 'vmp'),
             'manage_stock.in'            => __('قيمة إدارة المخزون غير صالحة.', 'vmp'),
         ];
+    }
+
+    /**
+     * اشتقاق vendor_id من سياق المصادقة فقط — يتجاهل أي قيمة من POST.
+     *
+     * @param array $data
+     * @return array
+     */
+    private function resolveVendorId(array $data): array
+    {
+        $userId = get_current_user_id();
+        if ($userId <= 0) {
+            unset($data['vendor_id']);
+            return $data;
+        }
+
+        try {
+            $vendorRepo = Container::getInstance()->make(VendorRepositoryInterface::class);
+            $vendor = $vendorRepo->findByUserId($userId);
+            if ($vendor) {
+                $data['vendor_id'] = (int) $vendor->id;
+                return $data;
+            }
+        } catch (\Exception $e) {
+            // نتابع إلى fallback
+        }
+
+        $vendorId = (int) get_user_meta($userId, 'vmp_vendor_id', true);
+        if ($vendorId > 0) {
+            $data['vendor_id'] = $vendorId;
+        } else {
+            unset($data['vendor_id']);
+        }
+
+        return $data;
     }
 }

@@ -30,6 +30,11 @@
         // Initially hide remove button (no featured image on new product)
         $removeFeaturedBtn.hide();
 
+        // ── Manage Stock toggle (was inline onchange in template) ──
+        $('body').on('change', '#vmp-manage-stock', function () {
+            $('#vmp_stock_qty_wrap').toggle(this.value === 'yes');
+        });
+
         // ── Featured Image Selection ──
         $selectFeaturedBtn.on('click', function () {
             window.VMPMediaPicker.open({
@@ -42,7 +47,7 @@
                     if (items && items.length > 0) {
                         var item = items[0];
                         $imageIdInput.val(item.attachment_id);
-                        $featuredPreview.html('<img src="' + escAttr(item.url) + '" alt="Featured" style="max-width:180px;border-radius:6px;">');
+                        $featuredPreview.html('<img src="' + escAttr(item.url) + '" alt="' + escAttr(productAltText()) + '" loading="lazy" decoding="async">');
                         $removeFeaturedBtn.show();
                     }
                 }
@@ -88,10 +93,10 @@
 
         // ── Append Gallery Item to DOM ──
         function appendGalleryItem(item) {
-            var html = '<div class="vmp-gallery-item" style="position:relative;display:inline-block;margin:5px;">' +
+            var html = '<div class="vmp-gallery-item">' +
                 '<input type="hidden" name="gallery_image_ids[]" value="' + escAttr(item.attachment_id) + '">' +
-                '<img src="' + escAttr(item.url) + '" alt="Gallery" style="width:80px;height:80px;object-fit:cover;border-radius:6px;">' +
-                '<button type="button" class="vmp-remove-gallery" data-attachment-id="' + escAttr(item.attachment_id) + '" style="position:absolute;top:-8px;right:-8px;width:20px;height:20px;background:#b32d2e;color:#fff;border:none;border-radius:50%;cursor:pointer;line-height:20px;text-align:center;">×</button>' +
+                '<img src="' + escAttr(item.url) + '" alt="' + escAttr(productAltText()) + '" loading="lazy" decoding="async">' +
+                '<button type="button" class="vmp-remove-gallery" data-attachment-id="' + escAttr(item.attachment_id) + '" aria-label="' + escAttr(vmp_media?.i18n?.removeImage || 'إزالة الصورة') + '">×</button>' +
                 '</div>';
             $galleryWrap.append(html);
         }
@@ -100,6 +105,12 @@
         $galleryWrap.on('click', '.vmp-remove-gallery', function () {
             $(this).closest('.vmp-gallery-item').remove();
         });
+
+        // Helper: dynamic alt text based on product name (falls back to generic)
+        function productAltText() {
+            var name = $('#vmp-product-name').val() || '';
+            return name ? (vmp_media?.i18n?.productImageAlt || 'صورة المنتج: ') + name : (vmp_media?.i18n?.productImage || 'صورة المنتج');
+        }
 
         // Helper: escape attribute for safe HTML insertion
         function escAttr(str) {

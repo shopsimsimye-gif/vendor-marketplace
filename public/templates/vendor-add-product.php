@@ -44,9 +44,9 @@ $categories = get_terms([
         <div class="vmp-notice vmp-notice-warning"><?php _e('ملف التنقل غير موجود.', 'vmp'); ?></div>
     <?php endif; ?>
 
-    <div class="vmp-card" style="max-width: 800px; margin: 0 auto;">
+    <div class="vmp-card vmp-add-product-card">
         <div class="vmp-card-header">
-            <h2 class="vmp-card-title"><?php _e('إضافة منتج جديد', 'vmp'); ?></h2>
+            <h1 class="vmp-card-title"><?php _e('إضافة منتج جديد', 'vmp'); ?></h1>
             <a href="?vmp_page=products" class="vmp-btn vmp-btn-outline vmp-btn-sm"><?php _e('عودة للمنتجات', 'vmp'); ?></a>
         </div>
 
@@ -59,24 +59,24 @@ $categories = get_terms([
             <input type="hidden" name="product_id" value="0">
 
             <div class="vmp-form-group">
-                <label><?php _e('اسم المنتج', 'vmp'); ?> <span class="required">*</span></label>
-                <input type="text" name="product_name" class="vmp-input" required>
+                <label for="vmp-product-name"><?php _e('اسم المنتج', 'vmp'); ?> <span class="required">*</span></label>
+                <input id="vmp-product-name" type="text" name="product_name" class="vmp-input" autocomplete="off" required>
             </div>
 
             <div class="vmp-form-row">
                 <div class="vmp-form-group">
-                    <label><?php _e('السعر الأساسي', 'vmp'); ?> <span class="required">*</span></label>
-                    <input type="number" step="0.01" name="regular_price" class="vmp-input" required>
+                    <label for="vmp-regular-price"><?php _e('السعر الأساسي', 'vmp'); ?> <span class="required">*</span></label>
+                    <input id="vmp-regular-price" type="number" step="0.01" name="regular_price" class="vmp-input" required>
                 </div>
                 <div class="vmp-form-group">
-                    <label><?php _e('سعر التخفيض (اختياري)', 'vmp'); ?></label>
-                    <input type="number" step="0.01" name="sale_price" class="vmp-input">
+                    <label for="vmp-sale-price"><?php _e('سعر التخفيض (اختياري)', 'vmp'); ?></label>
+                    <input id="vmp-sale-price" type="number" step="0.01" name="sale_price" class="vmp-input">
                 </div>
             </div>
 
             <div class="vmp-form-group">
-                <label><?php _e('التصنيف', 'vmp'); ?></label>
-                <select name="category" class="vmp-select">
+                <label for="vmp-product-category"><?php _e('التصنيف', 'vmp'); ?></label>
+                <select id="vmp-product-category" name="category" class="vmp-select">
                     <option value=""><?php _e('— اختر التصنيف —', 'vmp'); ?></option>
                     <?php foreach ($categories as $cat): ?>
                         <option value="<?php echo esc_attr($cat->term_id); ?>">
@@ -87,44 +87,44 @@ $categories = get_terms([
             </div>
 
             <div class="vmp-form-group">
-                <label><?php _e('الوصف القصير', 'vmp'); ?></label>
-                <textarea name="short_description" class="vmp-textarea" rows="3"></textarea>
+                <label for="vmp-short-description"><?php _e('الوصف القصير', 'vmp'); ?></label>
+                <textarea id="vmp-short-description" name="short_description" class="vmp-textarea" rows="3"></textarea>
             </div>
 
             <div class="vmp-form-group">
-                <label><?php _e('الوصف الكامل', 'vmp'); ?></label>
-                <textarea name="description" class="vmp-textarea" rows="6"></textarea>
+                <label for="vmp-description"><?php _e('الوصف الكامل', 'vmp'); ?></label>
+                <textarea id="vmp-description" name="description" class="vmp-textarea" rows="6"></textarea>
             </div>
 
             <div class="vmp-form-row">
                 <div class="vmp-form-group">
-                    <label><?php _e('إدارة المخزون؟', 'vmp'); ?></label>
-                    <select name="manage_stock" class="vmp-select" onchange="document.getElementById('vmp_stock_qty_wrap').style.display = this.value === 'yes' ? 'block' : 'none';">
+                    <label for="vmp-manage-stock"><?php _e('إدارة المخزون؟', 'vmp'); ?></label>
+                    <select name="manage_stock" id="vmp-manage-stock" class="vmp-select">
                         <option value="no"><?php _e('لا', 'vmp'); ?></option>
                         <option value="yes"><?php _e('نعم', 'vmp'); ?></option>
                     </select>
                 </div>
-                <div class="vmp-form-group" id="vmp_stock_qty_wrap" style="display:none;">
-                    <label><?php _e('كمية المخزون', 'vmp'); ?></label>
-                    <input type="number" name="stock_quantity" class="vmp-input" value="0">
+                <div class="vmp-form-group vmp-stock-quantity" id="vmp_stock_qty_wrap" hidden>
+                    <label for="vmp-stock-quantity"><?php _e('كمية المخزون', 'vmp'); ?></label>
+                    <input id="vmp-stock-quantity" type="number" name="stock_quantity" class="vmp-input" value="0">
                 </div>
             </div>
 
             <div class="vmp-form-group">
                 <label><?php _e('صورة المنتج الرئيسية', 'vmp'); ?></label>
-                <div id="vmp-featured-preview" style="margin-bottom:10px;"></div>
+                <div id="vmp-featured-preview" class="vmp-featured-preview"></div>
                 <input type="hidden" name="image_id" id="image_id" value="0">
                 <button type="button" id="vmp-select-featured" class="vmp-btn vmp-btn-outline vmp-btn-sm"><?php _e('اختر من المكتبة', 'vmp'); ?></button>
-                <button type="button" id="vmp-remove-featured" class="vmp-btn vmp-btn-outline vmp-btn-sm" style="display:none;color:#b32d2e;"><?php _e('إزالة', 'vmp'); ?></button>
+                <button type="button" id="vmp-remove-featured" class="vmp-btn vmp-btn-outline vmp-btn-sm vmp-remove-btn" hidden><?php _e('إزالة', 'vmp'); ?></button>
             </div>
 
             <div class="vmp-form-group">
                 <label><?php _e('معرض الصور', 'vmp'); ?></label>
-                <div id="vmp-gallery-wrap" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;"></div>
+                <div id="vmp-gallery-wrap" class="vmp-gallery-wrap"></div>
                 <button type="button" id="vmp-add-gallery" class="vmp-btn vmp-btn-outline vmp-btn-sm"><?php _e('إضافة صور', 'vmp'); ?></button>
             </div>
 
-            <div style="margin-top: 30px;">
+            <div class="vmp-form-actions">
                 <button type="submit" class="vmp-btn vmp-btn-primary vmp-btn-block vmp-btn-lg">
                     <?php _e('إضافة المنتج', 'vmp'); ?>
                 </button>

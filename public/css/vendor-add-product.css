@@ -1,0 +1,85 @@
+/**
+ * Vendor Marketplace — Add Product Page
+ * External stylesheet (task: move inline CSS out of template)
+ */
+
+/* ── البطاقة الرئيسية (كانت inline: max-width 800px; margin 0 auto) ── */
+.vmp-add-product-card {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* ── حاوية المعاينة للصورة الرئيسية (كانت inline: margin-bottom 10px) ── */
+.vmp-featured-preview {
+    margin-bottom: 10px;
+}
+
+/* ── حاوية معرض الصور (كانت inline: flex wrap gap 10px) ── */
+.vmp-gallery-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* ── زر إزالة الصورة الرئيسية (كان inline: display none + color) ── */
+.vmp-remove-btn {
+    color: #b32d2e;
+}
+
+/* ── أزرار الحفظ السفلية (كانت inline: margin-top 30px) ── */
+.vmp-form-actions {
+    margin-top: 30px;
+}
+
+/* ── عنصر المخزون (كان يستخدم display:none) ── */
+.vmp-stock-quantity[hidden] {
+    display: none;
+}
+
+/* ── عناصر المعرض المولّدة من JS (كانت inline styles في appendGalleryItem) ── */
+.vmp-gallery-item {
+    position: relative;
+    display: inline-block;
+    margin: 5px;
+}
+
+.vmp-gallery-item img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.vmp-gallery-item .vmp-remove-gallery {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    background: #b32d2e;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    line-height: 20px;
+    text-align: center;
+    padding: 0;
+}
+
+.vmp-gallery-item .vmp-remove-gallery:hover {
+    background: #8f1f1f;
+}
+
+/* ── معاينة الصورة الرئيسية في القالب (كانت inline في JS) ── */
+#vmp-featured-preview img {
+    max-width: 180px;
+    border-radius: 6px;
+    display: block;
+}
+
+/* ── ضمان إخفاء عناصر [hidden] حتى لو ورثت display من الفئات الأساسية ── */
+.vmp-remove-btn[hidden],
+.vmp-stock-quantity[hidden] {
+    display: none !important;
+}
