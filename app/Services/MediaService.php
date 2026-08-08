@@ -66,6 +66,7 @@ class MediaService
             'post_content' => '',
             'post_status'  => 'inherit',
             'post_author'  => $vendorId,
+            'post_mime_type' => $realMime,
         ], $uploaded['file']);
 
         $metadata = wp_generate_attachment_metadata($attachmentId, $uploaded['file']);
@@ -159,6 +160,7 @@ class MediaService
                 'post_content' => '',
                 'post_status'  => 'inherit',
                 'post_author'  => $vendorId,
+                'post_mime_type' => $realMime,
             ], $uploaded['file']);
 
             if (is_wp_error($attachmentId)) {

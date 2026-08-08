@@ -181,7 +181,8 @@ class ProductRepository implements ProductRepositoryInterface
         $where  = ['vendor_id = %d'];
         $params = [$vendor_id];
 
-        if (!empty($args['status'])) {
+        // 'all' يعني كل الحالات — لا نضيف فلتراً (كان يُعامل كقيمة حالة حرفية سابقاً)
+        if (!empty($args['status']) && 'all' !== $args['status']) {
             $where[]  = 'status = %s';
             $params[] = $args['status'];
         }

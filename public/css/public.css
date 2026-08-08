@@ -1381,3 +1381,11 @@
     right: 12px;
   }
 }
+
+/* ===== قائمة منتجات البائع (vendor-products.php) ===== */
+.vmp-table .vmp-product-thumb-cell { width: 60px; }
+.vmp-product-thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; display: block; }
+.vmp-product-thumb-placeholder { width: 40px; height: 40px; border-radius: 6px; background: var(--vmp-border); }
+.vmp-product-deleted { color: var(--vmp-danger); }
+.vmp-available-badge { color: var(--vmp-success); }
+.vmp-table .vmp-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-start; }
