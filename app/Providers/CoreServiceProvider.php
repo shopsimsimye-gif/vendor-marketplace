@@ -515,7 +515,6 @@ class CoreServiceProvider extends ServiceProvider
 
         // ─── Media Routes (Media Core) ───
         $registry->ajax('vmp_media_upload',  MediaController::class, 'upload',  false, 'vmp_public_nonce');
-        $registry->ajax('vmp_media_select',  MediaController::class, 'select',  false, 'vmp_public_nonce');
         $registry->ajax('vmp_media_delete',  MediaController::class, 'destroy', false, 'vmp_public_nonce');
         $registry->ajax('vmp_media_list',    MediaController::class, 'index',   false, 'vmp_public_nonce');
     }

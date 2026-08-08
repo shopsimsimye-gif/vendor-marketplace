@@ -1,4 +1,11 @@
 <?php
+/**
+ * Vendor Profile Template
+ * 
+ * Template for vendor profile/settings page.
+ * Uses VMPMediaPicker for Logo/Banner (replaces wp.media).
+ */
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -17,6 +24,7 @@ if (!$vendor) {
     echo '<div class="vmp-notice vmp-notice-error">' . esc_html__('البائع غير موجود.', 'vmp') . '</div>';
     return;
 }
+
 if ($vendor->status !== 'approved') {
     echo '<div class="vmp-notice vmp-notice-warning">' . esc_html__('حسابك قيد المراجعة أو غير معتمد.', 'vmp') . '</div>';
     return;
@@ -230,7 +238,7 @@ $public_nonce = wp_create_nonce('vmp_public_nonce');
                 <div class="vmp-input-hint">💬 <?php echo esc_html__('سيظهر زر "طلب عبر واتساب" في صفحة متجرك ومنتجاتك.', 'vmp'); ?></div>
             </div>
 
-            <!-- قسم: الصور -->
+            <!-- قسم: الصور (VMPMediaPicker — لا wp.media) -->
             <div class="vmp-section-title">
                 <span class="vmp-section-icon">🖼️</span>
                 <?php echo esc_html__('صور المتجر', 'vmp'); ?>
@@ -315,7 +323,3 @@ $public_nonce = wp_create_nonce('vmp_public_nonce');
 </div>
 
 <div class="vmp-loading"><div class="vmp-spinner"></div></div>
-
-
-
-

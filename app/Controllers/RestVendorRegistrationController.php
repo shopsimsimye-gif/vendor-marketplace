@@ -584,6 +584,11 @@ class RestVendorRegistrationController
             return new \WP_REST_Response(['error' => __('رمز الحماية غير صالح', 'vmp')], 400);
         }
 
+        // Rate limiting: 3 محاولات تسجيل / 10 دقائق / IP
+        if (\VMP\Support\Security::isRateLimited('vendor_register_guest', 0, 3, 10 * MINUTE_IN_SECONDS)) {
+            return new \WP_REST_Response(['error' => __('عدد محاولات التسجيل مرتفع جداً، يرجى الانتظار.', 'vmp')], 429);
+        }
+
         // ── 2. Collect & sanitize form data ──
         $first    = sanitize_text_field($_POST['first_name'] ?? '');
         $last     = sanitize_text_field($_POST['last_name']  ?? '');
@@ -604,11 +609,9 @@ class RestVendorRegistrationController
         if (!is_email($email)) {
             return new \WP_REST_Response(['error' => __('البريد الإلكتروني غير صالح', 'vmp')], 400);
         }
-        if (username_exists($username)) {
-            return new \WP_REST_Response(['error' => __('اسم المستخدم مسجّل مسبقاً، يرجى اختيار اسم آخر', 'vmp')], 409);
-        }
-        if (email_exists($email)) {
-            return new \WP_REST_Response(['error' => __('البريد الإلكتروني مسجّل مسبقاً في الموقع', 'vmp')], 409);
+        // مكافحة التعداد الآلي: لا نميّز بين اسم المستخدم والبرید لأغراض privacy
+        if (username_exists($username) || email_exists($email)) {
+            return new \WP_REST_Response(['error' => __('بعض البيانات مستخدمة بالفعل، يرجى التحقق والمحاولة مرة أخرى.', 'vmp')], 409);
         }
 
         // ── 4. Validate license file (if provided) ──
@@ -669,7 +672,13 @@ class RestVendorRegistrationController
         ]);
 
         if (!$inserted_id) {
+            // تنظيف كامل: حذف الملف المرفوع + المستخدم المنشأ كي لا يُترك أيتام
+            if ($attachment_id) {
+                wp_delete_attachment($attachment_id, true);
+            }
+            wp_delete_user($user_id);
             $this->logger->error('registerGuest: DB insert failed for user_id=' . $user_id, ['vmp']);
+            return new \WP_REST_Response(['error' => __('تعذر إنشاء طلب الانضمام، يرجى المحاولة مرة أخرى.', 'vmp')], 500);
         }
 
         // ── 8. Emails ──
@@ -702,6 +711,11 @@ class RestVendorRegistrationController
         }
         if (!isset($_POST['vmp_register_apply_nonce']) || !wp_verify_nonce($_POST['vmp_register_apply_nonce'], 'vmp_register_apply')) {
             return new \WP_REST_Response(['error' => __('رمز الحماية غير صالح', 'vmp')], 400);
+        }
+
+        // Rate limiting: 5 محاولات / 10 دقائق / مستخدم
+        if (\VMP\Support\Security::isRateLimited('vendor_register_apply', get_current_user_id(), 5, 10 * MINUTE_IN_SECONDS)) {
+            return new \WP_REST_Response(['error' => __('عدد المحاولات مرتفع جداً، يرجى الانتظار.', 'vmp')], 429);
         }
 
         $user_id = get_current_user_id();
@@ -754,7 +768,7 @@ class RestVendorRegistrationController
 
         if ($existing) {
             // Re-submit existing request
-            $repo->update($existing->id, [
+            $saved = $repo->update($existing->id, [
                 'store_name'     => $store_name,
                 'store_address'  => $country,
                 'store_phone'    => $phone,
@@ -765,7 +779,7 @@ class RestVendorRegistrationController
                 'admin_notes'    => '',
             ]);
         } else {
-            $repo->create([
+            $saved = $repo->create([
                 'user_id'           => $user_id,
                 'store_name'        => $store_name,
                 'store_slug'        => $store_slug,
@@ -782,6 +796,15 @@ class RestVendorRegistrationController
                 'admin_notes'       => '',
                 'terms_accepted'    => 1,
             ]);
+        }
+
+        if (!$saved) {
+            // تنظيف المرفق الذي رُفع إذا فشل كتابة الطلب
+            if ($attachment_id) {
+                wp_delete_attachment($attachment_id, true);
+            }
+            $this->logger->error('apply: DB write failed for user_id=' . $user_id, ['vmp']);
+            return new \WP_REST_Response(['error' => __('تعذر حفظ طلب الترقية، يرجى المحاولة مرة أخرى.', 'vmp')], 500);
         }
 
         // ── 7. Emails ──

@@ -319,5 +319,84 @@ class VendorController extends BaseController
         );
     }
 
-}
+    /**
+     * منح البائع (AJAX admin — vmp_admin_approve_vendor).
+     *
+     * [QA 2026-08-07] أُضيفت لإصلاح المسار المعلَّق الذي كان يشير إلى method غائبة.
+     * - فحص الصلاحية: vmp_manage_vendors (بائع معتمد / مدير).
+     * - فحص nonce: يقبل vmp_admin_nonce أو vmp_vendor_action_{id} (كما يرسله admin/pages/vendors.php).
+     *   vendor_id: من POST. إن لم يُبعث يستخدم GET vendor_id (المسار القديم).
+     */
+    public function adminApprove(): ApiResponse
+    {
+        if (!current_user_can('vmp_manage_vendors')) {
+            return new ErrorResponse(message: __('غير مصرح لك بهذا الإجراء.', 'vmp'), statusCode: 403);
+        }
 
+        $vendor_id = absint($_POST['vendor_id'] ?? $_GET['vendor_id'] ?? 0);
+        if (!$vendor_id) {
+            return new ErrorResponse(message: __('معرّف بائع غير صالح.', 'vmp'), statusCode: 400);
+        }
+
+        $nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
+        $nonceValid = wp_verify_nonce($nonce, 'vmp_admin_nonce') !== false
+            || wp_verify_nonce($nonce, 'vmp_vendor_action_' . $vendor_id) !== false;
+        if (!$nonceValid) {
+            return new ErrorResponse(message: __('رموز أمان غير صالح.', 'vmp'), statusCode: 403);
+        }
+
+        try {
+            $this->vendorService->approveVendor($vendor_id);
+        } catch (ServiceException $e) {
+            return new ErrorResponse(message: $e->getMessage(), statusCode: 400);
+        } catch (\Exception $e) {
+            return new ErrorResponse(message: $e->getMessage(), statusCode: 500);
+        }
+
+        return new SuccessResponse(
+            data: ['vendor_id' => $vendor_id],
+            message: __('تمت الموافقة على البائع.', 'vmp')
+        );
+    }
+
+    /**
+     * رفض بائع (AJAX) — vmp_admin_reject_vendor.
+     *
+     * [QA 2026-08-07] أُضيفت لإصلاح الـ method الغائبة التي يُخبر إليها المودال.
+     * يعتمد نفس حماية adminApprove.
+     */
+    public function adminReject(): ApiResponse
+    {
+        if (!current_user_can('vmp_manage_vendors')) {
+            return new ErrorResponse(message: __('غير مسموح بهذا الإجراء.', 'vmp'), statusCode: 403);
+        }
+
+        $vendor_id = absint($_POST['vendor_id'] ?? $_GET['vendor_id'] ?? 0);
+        if (!$vendor_id) {
+            return new ErrorResponse(message: __('معرّف بائع غير صالح.', 'vmp'), statusCode: 400);
+        }
+
+        $nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
+        $nonceValid = wp_verify_nonce($nonce, 'vmp_admin_nonce') !== false
+            || wp_verify_nonce($nonce, 'vmp_vendor_action_' . $vendor_id) !== false;
+        if (!$nonceValid) {
+            return new ErrorResponse(message: __('رمز أمان غير صالح.', 'vmp'), statusCode: 403);
+        }
+
+        $reason = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
+
+        try {
+            $this->vendorService->rejectVendor($vendor_id, $reason);
+        } catch (ServiceException $e) {
+            return new ErrorResponse(message: $e->getMessage(), statusCode: 400);
+        } catch (\Exception $e) {
+            return new ErrorResponse(message: $e->getMessage(), statusCode: 500);
+        }
+
+        return new SuccessResponse(
+            data: ['vendor_id' => $vendor_id],
+            message: __('تم رفض البائع.', 'vmp')
+        );
+    }
+
+}

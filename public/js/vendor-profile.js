@@ -1,4 +1,11 @@
-/* vendor-profile.js - loaded only on profile page. vmp_profile_data localized (php-generated). */
+/**
+ * vendor-profile.js - loaded only on profile page. vmp_profile_data localized (php-generated).
+ * 
+ * [QA 2026-08-08] Fixed: Removed unnecessary jQuery dependency check that blocked initialization.
+ * Fixed: Added polling for VMPMediaPicker if not immediately available.
+ * Fixed: Added console debugging for troubleshooting.
+ */
+
 document.addEventListener('DOMContentLoaded', function() {
     'use strict';
 
@@ -127,17 +134,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── رفع الصور (VMP Media Picker — Logo / Banner) ──
     // [QA 2026-08-07] Migrated from wp.media to VMPMediaPicker (single source of truth)
-    if (typeof window.VMPMediaPicker !== 'undefined' && window.VMPMediaPicker && typeof $ !== 'undefined') {
-        document.querySelectorAll('.vmp-image-upload').forEach(function(container) {
+    // [QA 2026-08-08] Fixed: Removed jQuery dependency check; added polling for VMPMediaPicker.
+    
+    function initImageUploads() {
+        var containers = document.querySelectorAll('.vmp-image-upload');
+        
+        if (!containers.length) {
+            console.warn('[VMP Profile] No .vmp-image-upload containers found');
+            return;
+        }
+
+        console.log('[VMP Profile] Found ' + containers.length + ' image upload containers');
+
+        containers.forEach(function(container) {
             var input = container.querySelector('input[type="hidden"]');
             var preview = container.querySelector('.vmp-image-preview');
             var icon = container.querySelector('.upload-icon');
             var text = container.querySelector('p');
             var removeBtn = container.querySelector('.vmp-remove-image');
 
+            if (!input) {
+                console.warn('[VMP Profile] Missing hidden input in .vmp-image-upload');
+                return;
+            }
+
             container.addEventListener('click', function(e) {
-                if (e.target.closest('.vmp-remove-image')) return;
+                // Don't open picker if clicking remove button
+                if (e.target.closest('.vmp-remove-image')) {
+                    return;
+                }
+
                 e.preventDefault();
+
+                if (typeof window.VMPMediaPicker === 'undefined') {
+                    console.error('[VMP Profile] VMPMediaPicker not loaded. Check that vmp-media-picker script is enqueued.');
+                    showToast('Media picker not available', 'error');
+                    return;
+                }
+
+                console.log('[VMP Profile] Opening VMPMediaPicker for type:', container.dataset.type);
 
                 window.VMPMediaPicker.open({
                     mode: 'single',
@@ -149,11 +184,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         var url = items[0].url || '';
 
                         input.value = attachmentId;
-                        preview.src = url;
-                        preview.classList.add('show');
+                        if (preview) {
+                            preview.src = url;
+                            preview.classList.add('show');
+                        }
                         if (icon) icon.style.display = 'none';
                         if (text) text.style.display = 'none';
                         if (removeBtn) removeBtn.style.display = 'flex';
+                        
+                        console.log('[VMP Profile] Selected image:', attachmentId, url);
                     }
                 });
             });
@@ -162,14 +201,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 removeBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
                     input.value = '0';
-                    preview.src = '';
-                    preview.classList.remove('show');
+                    if (preview) {
+                        preview.src = '';
+                        preview.classList.remove('show');
+                    }
                     if (icon) icon.style.display = 'block';
                     if (text) text.style.display = 'block';
                     removeBtn.style.display = 'none';
                 });
             }
         });
+    }
+
+    // Initialize immediately if VMPMediaPicker is ready, otherwise poll
+    if (typeof window.VMPMediaPicker !== 'undefined' && window.VMPMediaPicker) {
+        console.log('[VMP Profile] VMPMediaPicker ready, initializing...');
+        initImageUploads();
+    } else {
+        console.log('[VMP Profile] VMPMediaPicker not ready, polling...');
+        var checkInterval = setInterval(function() {
+            if (typeof window.VMPMediaPicker !== 'undefined' && window.VMPMediaPicker) {
+                clearInterval(checkInterval);
+                console.log('[VMP Profile] VMPMediaPicker loaded, initializing...');
+                initImageUploads();
+            }
+        }, 100);
+        // Timeout after 5 seconds
+        setTimeout(function() {
+            clearInterval(checkInterval);
+            if (typeof window.VMPMediaPicker === 'undefined') {
+                console.error('[VMP Profile] VMPMediaPicker failed to load within 5 seconds. Check script dependencies.');
+            }
+        }, 5000);
     }
 
     // ── إرسال النموذج عبر AJAX ──
@@ -197,13 +260,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            var slugInput = this.querySelector('input[name="store_slug"]');
-            if (slugInput) {
-                var slug = slugInput.value.trim();
+            var slugInputCheck = this.querySelector('input[name="store_slug"]');
+            if (slugInputCheck) {
+                var slug = slugInputCheck.value.trim();
                 var slugRegex = /^[a-z0-9\-]+$/;
                 if (!slugRegex.test(slug)) {
                     showToast(VMP_DATA.i18n.slugInvalid, 'warning');
-                    slugInput.focus();
+                    slugInputCheck.focus();
                     return;
                 }
             }

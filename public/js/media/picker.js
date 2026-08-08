@@ -11,10 +11,16 @@
  *   - This component replaces wp.media inside vendor UI (Featured, Gallery,
  *     Logo, Banner, AI) progressively.
  *
+ * [QA 2026-08-08] Corrections applied:
+ *   - itemsMap: stores full item data to avoid DOM lookup on confirmSelect.
+ *   - i18n fallback: added complete fallback map (was returning empty string).
+ *   - Custom confirm modal: replaced window.confirm with unified modal.
+ *   - ID normalization: vmp_media.id is primary; attachment_id is secondary.
+ *
  * Usage:
  *   VMPMediaPicker.open({
  *       mode: 'single' | 'multiple',
- *       type: 'image' | 'video' | '' ,          // optional filter (server-side)
+ *       type: 'image' | 'video' | '' ,
  *       title: 'Choose an image',
  *       selectButton: 'Use this image',
  *       uploadEnabled: true,
@@ -43,9 +49,11 @@
             total: 0,
             mode: 'single',
             type: '',
-            selection: []
+            selection: [],
+            itemsMap: {}
         },
         config: null,
+        confirmEls: null,
 
         open: function (cfg) {
             this.config = $.extend({
@@ -67,6 +75,7 @@
             this.state.total = 0;
             this.state.hasMore = true;
             this.state.selection = [];
+            this.state.itemsMap = {};
 
             this.build();
             this.load();
@@ -144,9 +153,7 @@
             grid.on('click', '.vmp-picker-delete', function (e) {
                 e.stopPropagation();
                 var $item = $(this).closest('.vmp-picker-item');
-                if (window.confirm(self.t('confirmDelete') || 'Delete this file?')) {
-                    self.deleteMedia($item.data('id'));
-                }
+                self.askDelete($item.data('id'));
             });
             loadMore.on('click', function (e) {
                 e.preventDefault();
@@ -213,6 +220,9 @@
             }
             var html = '';
             items.forEach(function (item) {
+                // Store full item data in itemsMap for confirmSelect
+                var id = item.id != null ? item.id : (item.attachment_id || '');
+                self.state.itemsMap[id] = item;
                 html += self.itemTemplate(item);
             });
             if (append) { this.$grid.append(html); }
@@ -247,7 +257,6 @@
                 this.state.selection = [id];
                 this.$grid.find('.vmp-picker-item.selected').removeClass('selected');
                 $item.addClass('selected');
-                // single mode: enable Done button immediately
                 this.$done.show();
             } else {
                 var idx = this.state.selection.indexOf(id);
@@ -274,15 +283,16 @@
             if (!this.state.selection.length) { return; }
             var result = [];
             this.state.selection.forEach(function (id) {
-                var $item = self.$grid.find('.vmp-picker-item[data-id="' + id + '"]');
-                var $img = $item.find('img');
-                result.push({
-                    id: id,
-                    attachment_id: parseInt($item.data('attachment'), 10) || 0,
-                    url: $img.attr('src') || '',
-                    thumbnail: $img.attr('src') || '',
-                    type: $item.data('type') || 'image'
-                });
+                var item = self.state.itemsMap[id];
+                if (item) {
+                    result.push({
+                        id: id,
+                        attachment_id: item.attachment_id || item.attachmentId || 0,
+                        url: item.url || '',
+                        thumbnail: item.thumbnail || item.url || '',
+                        type: item.type || 'image'
+                    });
+                }
             });
             var cb = this.config.onSelect || function () {};
             this.close();
@@ -315,7 +325,6 @@
             }).done(function (resp) {
                 if (resp && resp.success) {
                     self.showToast(self.t('uploadSuccess') || 'Uploaded successfully', 'success');
-                    // Refresh first page so the new file appears at top
                     self.state.page = 1;
                     self.load();
                 } else {
@@ -332,6 +341,35 @@
             });
         },
 
+        askDelete: function (id) {
+            var self = this;
+            this.closeConfirm();
+            var overlay = $('<div class="vmp-picker-confirm-overlay"></div>');
+            var modal = $('<div class="vmp-picker-confirm-modal" role="dialog" aria-modal="true"></div>');
+            modal.append('<p class="vmp-picker-confirm-message">' + (this.t('confirmDelete') || 'Delete this file?') + '</p>');
+            var actions = $('<div class="vmp-picker-confirm-actions"></div>');
+            var cancelBtn = $('<button type="button" class="button vmp-picker-confirm-cancel">' + (this.t('cancel') || 'Cancel') + '</button>');
+            var okBtn = $('<button type="button" class="button button-primary vmp-picker-confirm-ok">' + (this.t('confirm') || 'Confirm') + '</button>');
+            actions.append(cancelBtn).append(okBtn);
+            modal.append(actions);
+            overlay.append(modal);
+            $('body').append(overlay);
+            this.confirmEls = { overlay: overlay };
+
+            cancelBtn.on('click', function () { self.closeConfirm(); });
+            okBtn.on('click', function () {
+                self.closeConfirm();
+                self.deleteMedia(id);
+            });
+        },
+
+        closeConfirm: function () {
+            if (this.confirmEls) {
+                this.confirmEls.overlay.remove();
+                this.confirmEls = null;
+            }
+        },
+
         deleteMedia: function (id) {
             var self = this;
             $.post(vmp_media.ajax_url, {
@@ -343,6 +381,7 @@
                     self.$grid.find('.vmp-picker-item[data-id="' + id + '"]').remove();
                     var idx = self.state.selection.indexOf(parseInt(id, 10));
                     if (idx >= 0) { self.state.selection.splice(idx, 1); }
+                    delete self.state.itemsMap[id];
                     self.showToast(self.t('deleted') || 'Deleted successfully', 'success');
                 } else {
                     self.showToast((resp && resp.data && resp.data.message) || self.t('uploadError') || 'Error', 'error');
@@ -359,7 +398,6 @@
         },
 
         filter: function () {
-            // Client-side filter over already-loaded items (server search later)
             var q = (this.$search.val() || '').toLowerCase().trim();
             var self = this;
             this.$grid.find('.vmp-picker-item').each(function () {
@@ -398,6 +436,7 @@
             this.$search = null;
             this.$loadMore = null;
             this.$count = null;
+            this.closeConfirm();
         },
 
         showToast: function (msg, type) {
@@ -412,7 +451,25 @@
 
         t: function (key) {
             var map = (vmp_media.i18n) || {};
-            return map[key] || '';
+            var fallback = {
+                mediaLibrary: 'Media Library',
+                uploadNew: 'Upload New',
+                search: 'Search',
+                loadMore: 'Load more',
+                done: 'Done',
+                delete: 'Delete',
+                noMedia: 'No media found.',
+                uploadError: 'Upload failed. Please try again.',
+                uploadSuccess: 'Uploaded successfully.',
+                networkError: 'Network error. Please try again.',
+                deleted: 'Deleted successfully.',
+                loadError: 'Error loading media.',
+                confirmDelete: 'Are you sure you want to delete this file?',
+                cancel: 'Cancel',
+                confirm: 'Confirm',
+                files: 'files'
+            };
+            return map[key] || fallback[key] || '';
         }
     };
 

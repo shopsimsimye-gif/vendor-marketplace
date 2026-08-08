@@ -95,6 +95,7 @@ class Install {
             'vmp_vendor_reviews',
             'vmp_jobs',
             'vmp_ai_jobs',
+            'vmp_rate_limits',
         ];
 
         foreach ($tables as $table) {
@@ -442,6 +443,16 @@ class Install {
             KEY `idx_attachment` (`attachment_id`),
             KEY `idx_folder` (`folder_id`),
             KEY `idx_type` (`type`)
+        ) {$charset_collate};";
+
+        // ── جدول الصرّف الذري (rate limit) ──
+        $tables[] = "CREATE TABLE `{$p}rate_limits` (
+            `bucket` VARCHAR(32) NOT NULL,
+            `window_start` BIGINT UNSIGNED NOT NULL,
+            `count` INT UNSIGNED NOT NULL DEFAULT 0,
+            `last_seen` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            PRIMARY KEY (`bucket`, `window_start`),
+            KEY `idx_last_seen` (`last_seen`)
         ) {$charset_collate};";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';

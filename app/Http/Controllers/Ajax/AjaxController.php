@@ -322,6 +322,9 @@ class AjaxController
             $requestId = $this->registrationService->createRequest($requestData);
 
             if (!$requestId) {
+                if ($licenseId) {
+                    wp_delete_attachment($licenseId, true);
+                }
                 $this->sendJsonError(['message' => __('فشل إنشاء الطلب، يرجى المحاولة مرة أخرى.', 'vmp')]);
                 return;
             }
@@ -359,13 +362,10 @@ class AjaxController
             return;
         }
 
-        if ($this->registrationService->emailExists($data['email'])) {
-            $this->sendJsonError(['message' => __('هذا البريد الإلكتروني مسجّل مسبقاً.', 'vmp')]);
-            return;
-        }
-
-        if ($this->registrationService->slugExists(sanitize_title($data['username']))) {
-            $this->sendJsonError(['message' => __('اسم المستخدم غير متاح.', 'vmp')]);
+        if ($this->registrationService->emailExists($data['email'])
+            || $this->registrationService->slugExists(sanitize_title($data['username']))) {
+            // مكافحة التعداد: رسالة عامة لا تميّز بين البريد واسم المستخدم
+            $this->sendJsonError(['message' => __('بعض البيانات مستخدمة بالفعل، يرجى التحقق والمحاولة مرة أخرى.', 'vmp')]);
             return;
         }
 
@@ -401,7 +401,10 @@ class AjaxController
         $requestId = $this->registrationService->createRequest($requestData);
 
         if (!$requestId) {
-            // تنظيف: حذف المستخدم إذا فشل إنشاء الطلب
+            // تنظيف: حذف المرفق + المستخدم إذا فشل إنشاء الطلب
+            if ($licenseId) {
+                wp_delete_attachment($licenseId, true);
+            }
             wp_delete_user($userId);
             $this->sendJsonError(['message' => __('فشل إنشاء الطلب بعد إنشاء الحساب. يرجى المحاولة مرة أخرى.', 'vmp')]);
             return;
@@ -470,44 +473,20 @@ class AjaxController
     }
 
     /**
-     * Rate limiting بسيط عبر transients (IP-based)
+     * Rate limiting: يفوض إلى Security::isRateLimited (جدول DB ذري).
      */
-    private function isRateLimited(string $key, int $maxAttempts, int $window): bool
+    private function isRateLimited(string $action, int $maxAttempts, int $window): bool
     {
-        $ip = $this->getClientIp();
-        $transientKey = 'vmp_rl_' . $key . '_' . md5($ip);
-        $attempts = (int) get_transient($transientKey);
-
-        if ($attempts >= $maxAttempts) {
-            return true;
-        }
-
-        set_transient($transientKey, $attempts + 1, $window);
-        return false;
+        // userId=0 → يتم تحديد الهوية عبر IP (Security::getClientIp).
+        return \VMP\Support\Security::isRateLimited('ajax_' . $action, 0, $maxAttempts, $window);
     }
 
     /**
-     * الحصول على IP العميل
+     * IP العميل الحقيقي (Cloudflare-aware فقط).
      */
     private function getClientIp(): string
     {
-        $headers = [
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_CLIENT_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'REMOTE_ADDR',
-        ];
-        foreach ($headers as $header) {
-            if (!empty($_SERVER[$header])) {
-                $ips = explode(',', sanitize_text_field(wp_unslash($_SERVER[$header])));
-                $ip = trim($ips[0]);
-                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                    return $ip;
-                }
-                return $ip; // fallback حتى للـ local IPs
-            }
-        }
-        return '0.0.0.0';
+        return \VMP\Support\Security::getClientIp();
     }
 
     /**

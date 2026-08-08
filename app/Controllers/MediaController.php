@@ -50,29 +50,6 @@ class MediaController extends BaseController
         }
     }
 
-    public function select(): void
-    {
-        try {
-            $attachmentId = (int) ($_POST['attachment_id'] ?? 0);
-            $vendorId = get_current_user_id();
-
-            if (!$attachmentId) {
-                wp_send_json_error(['message' => __('Attachment ID required', 'vendor-marketplace')]);
-                return;
-            }
-
-            $media = $this->mediaService->selectAttachment($attachmentId, $vendorId);
-
-            wp_send_json_success([
-                'media' => $media->toArray(),
-                'url' => wp_get_attachment_url($media->attachmentId),
-                'thumbnail' => wp_get_attachment_image_url($media->attachmentId, 'thumbnail'),
-            ]);
-        } catch (\Throwable $e) {
-            wp_send_json_error(['message' => $e->getMessage()]);
-        }
-    }
-
     public function destroy(DeleteMediaRequest $request): void
     {
         try {
@@ -89,6 +66,9 @@ class MediaController extends BaseController
 
     public function index(): void
     {
+        // [QA 2026-08-07] فحص nonce — كان غائباً (المسار AJAX no-Request لا يتحقق تلقائياً).
+        check_ajax_referer('vmp_public_nonce', 'nonce');
+
         try {
             $vendorId = get_current_user_id();
             $page = (int) ($_GET['page'] ?? 1);

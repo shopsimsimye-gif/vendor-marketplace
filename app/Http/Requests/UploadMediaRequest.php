@@ -17,8 +17,9 @@ class UploadMediaRequest extends AbstractRequest
 
     protected function rules(): array
     {
-        return [
-            'file' => ['required'],
-        ];
+        // [QA 2026-08-07] الملف يُقرأ من $_FILES وليس $_POST؛ قاعدة 'required' هنا كانت
+        // تفشل دائماً لأن validate() يفحص $_POST فقط. التحقق الفعلي من الملف (وجود/حجم/MIME)
+        // يجري في MediaController::upload() و MediaService::upload().
+        return [];
     }
 }

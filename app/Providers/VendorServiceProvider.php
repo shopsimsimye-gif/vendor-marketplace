@@ -515,7 +515,7 @@ class VendorServiceProvider extends ServiceProvider
 
             // ─── 7b. VMP Media Picker (reusable component) ───
             wp_enqueue_style('vmp-media-picker', VMP_PLUGIN_URL . 'public/css/media/picker.css', ['vmp-public'], VMP_VERSION);
-            wp_enqueue_script('vmp-media-picker', VMP_PLUGIN_URL . 'public/js/media/picker.js', ['jquery'], VMP_VERSION, true);
+            wp_enqueue_script('vmp-media-picker', VMP_PLUGIN_URL . 'public/js/media/picker.js', ['jquery', 'vmp-public'], VMP_VERSION, true);
 
             // ─── 8. تحميل JS المنتجات فقط في صفحة المنتجات ───
             if (in_array($current_page, ['products', 'add-product', 'edit-product'], true)) {

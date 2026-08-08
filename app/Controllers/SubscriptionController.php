@@ -14,6 +14,7 @@ use VMP\Http\Requests\RequestPlanChangeRequest;
 use VMP\Http\Requests\AdminApprovePlanChangeRequest;
 use VMP\Http\Requests\AdminRejectPlanChangeRequest;
 use VMP\Http\Responses\SuccessResponse;
+use VMP\Http\Responses\ErrorResponse;
 use VMP\Http\Responses\ApiResponse;
 use VMP\Exceptions\ServiceException;
 
@@ -229,6 +230,12 @@ class SubscriptionController extends BaseController
      */
     public function adminGetPendingPlanChanges(): ApiResponse
     {
+        // [QA 2026-08-07] إضافة حماية صلاحية + nonce — كانت بدون فحص صلاحيات.
+        if (!current_user_can('vmp_manage_subscriptions')) {
+            return new ErrorResponse(message: __('غير مصرح لك بهذا الإجراء.', 'vmp'), statusCode: 403);
+        }
+        check_ajax_referer('vmp_admin_nonce', 'nonce');
+
         $pending = $this->subscriptionService->getAllPendingPlanChanges();
 
         return new SuccessResponse(data: ['requests' => $pending]);

@@ -207,17 +207,141 @@ class Security
      * @param int    $window    النافذة الزمنية بالثواني
      * @return bool true إذا تجاوز الحد
      */
+    /**
+     * Rate Limiter ذري (atomic) عبر جدول DB — مقاوم لتزويـر الـ race condition.
+     *
+     * يستخدم `INSERT ... ON DUPLICATE KEY UPDATE` لزيادة العداد بشكل ذري داخل
+     * MySQL، بدلاً من get/set transient (not atomic) الذي كان يسمح بمرور عمليتين
+     * متزامنتين في نفس اللحظة. يُستخدم `identifier` = userId إن وُجد وإلا IP.
+     *
+     * @return bool true إذا تجاوز الحد
+     */
     public static function isRateLimited(string $action, int $userId = 0, int $limit = 5, int $window = 300): bool
     {
-        $identifier = $userId ?: ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-        $key        = 'vmp_rl_' . md5($action . '_' . $identifier);
+        global $wpdb;
 
-        $attempts = (int) get_transient($key);
-        if ($attempts >= $limit) {
-            return true;
+        $identifier  = $userId ?: self::getClientIp();
+        $bucket      = md5($action . '|' . $identifier);
+        $table       = $wpdb->prefix . 'vmp_rate_limits';
+        $now         = time();
+        $windowStart = $now - ($now % $window);
+
+        // bump ذري — لا read-modify-write تحت التزامن
+        // eslint تعليق إعادة القيم في DUPLICATE لتحديث last_seen
+        $wpdb->query($wpdb->prepare(
+            "INSERT INTO {$table} (`bucket`, `window_start`, `count`, `last_seen`)
+             VALUES (%s, %d, 1, %d)
+             ON DUPLICATE KEY UPDATE `count` = `count` + 1, `last_seen` = VALUES(`last_seen`)",
+            $bucket, $windowStart, $now
+        ));
+
+        $count = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT `count` FROM {$table} WHERE `bucket` = %s AND `window_start` = %d",
+            $bucket, $windowStart
+        ));
+
+        // تنظيف دوري متساهل (1% من الطلبات) لكبح نمو الجدول.
+        if (mt_rand(1, 100) === 1) {
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM {$table} WHERE `last_seen` < %d",
+                $now - DAY_IN_SECONDS
+            ));
         }
 
-        set_transient($key, $attempts + 1, $window);
+        return $count > $limit;
+    }
+
+    /**
+     * جلب IP العميل الحقيقي دون الثقة في headers مزورة.
+     *
+     * نثق بـ CF-Connecting-IP / X-Forwarded-For فقط إذا كان الطلب قادماً فعلاً
+     * من نطاقات Cloudflare الرسمية (REMOTE_ADDR ضمن CIDR). وإلا بل REMOTE_ADDR.
+     */
+    public static function getClientIp(): string
+    {
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+        $cloudflareRanges = [
+            // IPv4
+            '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22',
+            '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18',
+            '190.93.240.0/20', '188.114.96.0/20', '197.234.240.0/22',
+            '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+            '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
+            // IPv6
+            '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32',
+            '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29',
+            '2c0f:f248::/32',
+        ];
+
+        $trustedProxies = apply_filters('vmp_trusted_proxies', $cloudflareRanges);
+
+        if (self::ipInRanges($remoteAddr, $trustedProxies)) {
+            if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+                $first = trim(explode(',', (string) $_SERVER['HTTP_CF_CONNECTING_IP'])[0]);
+                if (filter_var($first, FILTER_VALIDATE_IP)) {
+                    return $first;
+                }
+            }
+            if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+                $first = trim(explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+                if (filter_var($first, FILTER_VALIDATE_IP)) {
+                    return $first;
+                }
+            }
+        }
+
+        return $remoteAddr;
+    }
+
+    /**
+     * تحقق من أن IP ضمن أي نطاق CIDR (يدعم IPv4/IPv6).
+     */
+    private static function ipInRanges(string $ip, array $ranges): bool
+    {
+        $packedIp = @inet_pton($ip);
+        if ($packedIp === false) {
+            return false;
+        }
+
+        foreach ($ranges as $range) {
+            if (!is_string($range) || strpos($range, '/') === false) {
+                continue;
+            }
+
+            [$subnet, $bits] = array_pad(explode('/', $range, 2), 2, null);
+            $packedSubnet = @inet_pton($subnet);
+
+            if ($packedSubnet === false || strlen($packedSubnet) !== strlen($packedIp)) {
+                continue;
+            }
+
+            $maxBits    = strlen($packedIp) * 8;
+            $maskBits   = $bits !== null ? min((int) $bits, $maxBits) : $maxBits;
+            $fullBytes  = intdiv($maskBits, 8);
+            $remainBits = $maskBits % 8;
+
+            $match = true;
+            for ($i = 0; $i < strlen($packedIp); $i++) {
+                if ($i < $fullBytes) {
+                    if ($packedIp[$i] !== $packedSubnet[$i]) {
+                        $match = false;
+                        break;
+                    }
+                } elseif ($i === $fullBytes && $remainBits > 0) {
+                    $maskByte = (0xFF << (8 - $remainBits)) & 0xFF;
+                    if ((ord($packedIp[$i]) & $maskByte) !== (ord($packedSubnet[$i]) & $maskByte)) {
+                        $match = false;
+                        break;
+                    }
+                }
+            }
+
+            if ($match) {
+                return true;
+            }
+        }
+
         return false;
     }
 

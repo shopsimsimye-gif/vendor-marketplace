@@ -202,38 +202,6 @@ class MediaService
         }
     }
 
-    public function selectAttachment(int $attachmentId, int $vendorId): MediaDTO
-    {
-        $existing = $this->repository->findByAttachment($attachmentId);
-        if ($existing) {
-            return $existing;
-        }
-
-        $attachment = get_post($attachmentId);
-        if (!$attachment || $attachment->post_type !== 'attachment') {
-            throw new \RuntimeException(__('Invalid attachment', 'vendor-marketplace'));
-        }
-
-        $filePath = get_attached_file($attachmentId);
-        $metadata = wp_get_attachment_metadata($attachmentId);
-        $mimeType = get_post_mime_type($attachmentId);
-        $fileSize = file_exists($filePath) ? filesize($filePath) : 0;
-        $imageSize = $this->getImageDimensions($filePath, $metadata);
-
-        $dto = new MediaDTO(
-            vendorId: $vendorId,
-            attachmentId: $attachmentId,
-            type: $this->resolveType($mimeType),
-            mimeType: $mimeType,
-            fileSize: (int) $fileSize,
-            width: $imageSize['width'],
-            height: $imageSize['height'],
-            metadata: $metadata,
-        );
-
-        return $this->repository->create($dto);
-    }
-
     public function delete(int $mediaId, int $vendorId): bool
     {
         $media = $this->repository->find($mediaId);
