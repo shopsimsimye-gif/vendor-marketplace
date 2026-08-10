@@ -121,3 +121,4 @@
 | 2026-08-04 | وثيقة | إعادة بناء القائمة وفق خطة Architecture Audit | — | `.qa_backups/docs-audit-20260804/` |
 | 2026-08-05 | تنظيف | حذف `Policies/` + `AuthorizationService` نهائياً عبر **git rm** (لم يعد يعود مع pull) | PHP container: gone + REST سليم | `.qa_backups/policies-final-removal-20260805/` |
 | 2026-08-05 | تنظيف | `ApiServiceProvider` — إزالة require لـ Rest/routes.php (نقاط ميتة) | PHP container: REST 10 مساراً، لا فادح | `.qa_backups/dead-routes-remove-20260805/` |
+| 2026-08-10 | مراجعة | **المرحلة C**: PSR-4 audit (323 نوعًا، 0 انتهاك) + توثيق توحيد Controllers (الانقسام مقصود) | PHP container: PSR-4 OK + REST 10 مسارًا + WP-load OK | `.qa_backups/phaseC-docs-20260810/` |

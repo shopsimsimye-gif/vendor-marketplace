@@ -1,7 +1,7 @@
 # Vendor Marketplace — Architecture (المرجع المعماري الرسمي)
 
 > **الغرض**: المرجع الرسمي لبنية الإضافة (VMP). كل طبقة موثقة مع مسؤوليتها وملفاتها.
-> **آخر تحديث**: 2026-08-04 — جلسة Architecture Audit.
+> **آخر تحديث**: 2026-08-10 — المرحلة C (PSR-4 audit + توثيق توحيد Controllers).
 > **القاعدة**: أي تغيير معماري يجب أن يحدّث هذا الملف أولاً.
 
 ---
@@ -121,7 +121,12 @@ REST ── AJAX ── Frontend ── Admin
 
 ## 6. طبقة HTTP (Controllers, Requests, Middleware, Responses)
 
-- **Controllers**: `app/Controllers/` (AJAX) + `app/Http/Controllers/Api/` (REST).
+- **Controllers** (توحيد موثّق — المرحلة C، 2026-08-10):
+  - `VMP\Controllers` (`app/Controllers/`) — **المسار الحديث** (AJAX عبر RouteRegistry + REST الجديد): 17 صنفًا (BaseController + 16 تحكمًا: Vendor, Product, Order, Commission, Withdrawal, Subscription, Settings, Media, Report, Template, Whatsapp, AiSettings, AIProduct, VendorRegistration, RestVendorRegistration, Ajax غير موجود هنا).
+  - `VMP\Http\Controllers\Api` (`app/Http/Controllers/Api/`) — **REST قديم، حيّ** عبر `ApiServiceProvider` (VendorApiController + ProductApiController + Traits\VendorAuthHelpers) — لن يُدمج حتى إزالة REST القديم.
+  - `VMP\Http\Controllers\Ajax` (`app/Http/Controllers/Ajax/AjaxController.php`) — **محفوظ كـ backup `@deprecated` بقرار سابق** (0 مرجع حي؛ يحتوي hooks ذاتية لتفعيل متعدد الخطوات عند الحاجة) — **لا حذف**.
+  - `VMP\Modules\Media\Http\Controllers\Api\MediaApiController` — REST داخلي للوحدة (حي عبر MediaServiceProvider).
+  - **النتيجة**: الانقسام `Controllers` مقابل `Http\Controllers` **مقصود وظيفيًا** — لا دمج الآن دون إزالة REST القديم (قرار المرحلة C).
 - **Requests** (`app/Http/Requests/`): `AbstractRequest` — sanitize + validation + nonce (`_wpnonce` أو `nonce`).
 - **Middleware** (`app/Http/Middleware/`): RateLimit (IP موثوق فقط — جولة 4), Vendor, Authentication.
 - **Responses** (`app/Http/Responses/`): Success/Error/Paginated/Validation — `JsonResponse` محذوف (جولة 4).
@@ -145,6 +150,8 @@ REST ── AJAX ── Frontend ── Admin
 | 2026-08-03 | إبقاء VendorRegistration (لا حذف) — الجولة 7: registerGuest/apply في RestVendorRegistrationController |
 | 2026-08-04 | تأجيل Vendor Media Library حتى v1.1 |
 | 2026-08-04 | **القاعدة الصارمة**: لا ميزات جديدة قبل اكتمال مراجعة البنية الأساسية 100% |
+| 2026-08-10 | **المرحلة C — PSR-4 audit**: 323 نوعًا | 0 انتهاك | 0 مكرر | 0 بدون بادئة — أُصلح: AbstractViewModel (مكرر في OrderViewModel) + إعادة تسمية هجرة MediaTables + Stub OrderViewModel (commit `d7baab7`) |
+| 2026-08-10 | **المرحلة C — توحيد Controllers**: الانقسام مقصود وظيفيًا (REST قديم حيّ + Ajax backup) — توثيق بدل دمج؛ لا دمج قبل إزالة REST القديم |
 
 ---
 
