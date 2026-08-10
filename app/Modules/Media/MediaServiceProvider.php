@@ -10,6 +10,9 @@ use VMP\Providers\ServiceProvider;
 use VMP\Modules\Media\Repositories\MediaRepository;
 use VMP\Modules\Media\Repositories\FolderRepository;
 use VMP\Modules\Media\Repositories\StorageRepository;
+use VMP\Modules\Media\Repositories\CachedMediaRepository;
+use VMP\Modules\Media\Repositories\CachedFolderRepository;
+use VMP\Modules\Media\Repositories\CachedStorageRepository;
 use VMP\Modules\Media\Contracts\MediaRepositoryInterface;
 use VMP\Modules\Media\Contracts\FolderRepositoryInterface;
 use VMP\Modules\Media\Contracts\StorageRepositoryInterface;
@@ -36,13 +39,13 @@ class MediaServiceProvider extends ServiceProvider
     protected function registerRepositories(): void
     {
         $this->container->singleton(MediaRepository::class, static fn(): MediaRepository => new MediaRepository());
-        $this->container->singleton(MediaRepositoryInterface::class, fn() => $this->container->make(MediaRepository::class));
+        $this->container->singleton(MediaRepositoryInterface::class, fn() => new CachedMediaRepository($this->container->make(MediaRepository::class)));
 
         $this->container->singleton(FolderRepository::class, static fn(): FolderRepository => new FolderRepository());
-        $this->container->singleton(FolderRepositoryInterface::class, fn() => $this->container->make(FolderRepository::class));
+        $this->container->singleton(FolderRepositoryInterface::class, fn() => new CachedFolderRepository($this->container->make(FolderRepository::class)));
 
         $this->container->singleton(StorageRepository::class, static fn(): StorageRepository => new StorageRepository());
-        $this->container->singleton(StorageRepositoryInterface::class, fn() => $this->container->make(StorageRepository::class));
+        $this->container->singleton(StorageRepositoryInterface::class, fn() => new CachedStorageRepository($this->container->make(StorageRepository::class)));
     }
 
     protected function registerServices(): void
