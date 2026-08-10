@@ -4,6 +4,7 @@ namespace VMP\Providers;
 defined('ABSPATH') || exit;
 
 use VMP\Contracts\CommissionRepositoryInterface;
+use VMP\Contracts\MediaRepositoryInterface;
 use VMP\Contracts\OrderRepositoryInterface;
 use VMP\Contracts\ProductRepositoryInterface;
 use VMP\Contracts\SubscriptionPlanRepositoryInterface;
@@ -12,6 +13,7 @@ use VMP\Contracts\VendorRepositoryInterface;
 use VMP\Contracts\VendorRequestRepositoryInterface;
 use VMP\Contracts\WithdrawalRepositoryInterface;
 use VMP\Repositories\CommissionRepository;
+use VMP\Repositories\MediaRepository;
 use VMP\Repositories\OrderRepository;
 use VMP\Repositories\ProductRepository;
 use VMP\Repositories\SubscriptionPlanRepository;
@@ -197,6 +199,12 @@ class CoreServiceProvider extends ServiceProvider
 
         $this->container->singleton(VendorRequestRepositoryInterface::class, function () {
             return $this->container->make(VendorRequestRepository::class);
+        });
+
+        $this->container->singleton(MediaRepositoryInterface::class, function () {
+            return new \VMP\Repositories\Cached\CachedMediaRepository(
+                $this->container->make(MediaRepository::class)
+            );
         });
 
         
