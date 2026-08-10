@@ -30,7 +30,7 @@ class ProviderSecretRepository
             'tag' => $payload['tag'],
             'algorithm' => $payload['algorithm'] ?? 'AES-256-GCM',
             'version' => $payload['version'] ?? '',
-            'key_version' => $payload['key_version'] ?? $this->secretManager->validateKey() ? 1 : 1,
+            'key_version' => $payload['key_version'] ?? 1,
             'created_by' => $created_by,
             'updated_by' => $created_by,
             'is_active' => 1,

@@ -53,7 +53,7 @@ class KeyManager
 
         // Fallback: derive 32-byte key via SHA-256 of provided secret
         $derived = hash('sha256', $k, true);
-        if ($derived !== false && strlen($derived) === 32) {
+        if (strlen($derived) === 32) {
             return $derived;
         }
 
@@ -80,13 +80,4 @@ class KeyManager
         update_option('vmp_encryption_key_version', (int) $v);
     }
 
-    public function rotateKey(string $newKey): void
-    {
-        // Rotation is a higher-level operation managed by SecretManager/WP-CLI.
-        // This just sets the option to the new version placeholder if needed.
-        // Real re-encryption is handled elsewhere.
-        // Increment key version
-        $current = $this->keyVersion();
-        $this->setKeyVersion($current + 1);
-    }
 }
