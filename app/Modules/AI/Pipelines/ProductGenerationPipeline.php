@@ -6,6 +6,7 @@ defined('ABSPATH') || exit;
 use VMP\Modules\AI\AIOrchestrator;
 use VMP\Modules\AI\AIConfiguration;
 use VMP\Modules\AI\Cost\CostTracker;
+use VMP\Modules\AI\Repositories\AIUsageLedgerRepository;
 use VMP\Modules\AI\Context\ImageContext;
 use VMP\Modules\AI\Context\ProductContext;
 use VMP\Modules\AI\Context\StoreContext;
@@ -14,11 +15,12 @@ use VMP\Modules\AI\Prompts\GenerateDescriptionPrompt;
 use VMP\Modules\AI\Prompts\GenerateSEOKeywordsPrompt;
 use VMP\Modules\AI\Prompts\GenerateTitlePrompt;
 use VMP\Modules\AI\Results\AIResult;
+use VMP\Modules\AI\Exceptions\RetryLaterException;
 
 /**
  * Class ProductGenerationPipeline
  *
- * Description of administrative platform component ProductGenerationPipeline.
+ * AI product generation pipeline with vendor usage limit enforcement.
  *
  * @package vendor-marketplace
  */
@@ -27,7 +29,8 @@ class ProductGenerationPipeline
     public function __construct(
         private AIOrchestrator $ai,
         private CostTracker $costTracker,
-        private AIConfiguration $configuration
+        private AIConfiguration $configuration,
+        private AIUsageLedgerRepository $usageLedger
     ) {
     }
 
@@ -38,6 +41,11 @@ class ProductGenerationPipeline
         ?StoreContext $store = null,
         array $options = []
     ): AIResult {
+        // ── Enforce vendor usage limits before starting ──
+        if ($vendor !== null && $vendor->id > 0) {
+            $this->enforceVendorLimits($vendor->id);
+        }
+
         $this->costTracker->reset();
 
         $context = $this->mergeContext($image, $product, $vendor, $store);
@@ -58,6 +66,11 @@ class ProductGenerationPipeline
         $usage = $this->costTracker->summary();
 
         $descriptionText = (string) ($description['description'] ?? $description['content'] ?? '');
+
+        // ── Persist usage to ledger ──
+        if ($vendor !== null && $vendor->id > 0) {
+            $this->recordUsage($vendor->id, $usage, $options['job_id'] ?? '');
+        }
 
         return AIResult::fromArray([
             'title' => (string) ($title['title'] ?? $title['content'] ?? ''),
@@ -88,6 +101,72 @@ class ProductGenerationPipeline
         ]);
     }
 
+    /**
+     * Enforce monthly vendor cost and request limits.
+     * Throws RetryLaterException if limit exceeded.
+     */
+    private function enforceVendorLimits(int $vendorId): void
+    {
+        $costLimit = $this->configuration->monthlyVendorCostLimit();
+        $requestLimit = $this->configuration->monthlyVendorRequestLimit();
+
+        if ($costLimit > 0) {
+            $currentCost = $this->usageLedger->getMonthlyCost($vendorId);
+            if ($currentCost >= $costLimit) {
+                throw new RetryLaterException(
+                    sprintf(
+                        'تم تجاوز الحد الأقصى للتكلفة الشهرية (%.2f). التكلفة الحالية: %.2f',
+                        $costLimit,
+                        $currentCost
+                    ),
+                    429,
+                    3600 // retry after 1 hour
+                );
+            }
+        }
+
+        if ($requestLimit > 0) {
+            $currentRequests = $this->usageLedger->getMonthlyRequestCount($vendorId);
+            if ($currentRequests >= $requestLimit) {
+                throw new RetryLaterException(
+                    sprintf(
+                        'تم تجاوز الحد الأقصى لعدد الطلبات الشهرية (%d). الطلبات الحالية: %d',
+                        $requestLimit,
+                        $currentRequests
+                    ),
+                    429,
+                    3600
+                );
+            }
+        }
+    }
+
+    /**
+     * Record usage to persistent ledger.
+     */
+    private function recordUsage(int $vendorId, array $usage, string $jobId = ''): void
+    {
+        // The CostTracker summary has aggregated data; we need per-call data.
+        // For now, record one aggregate entry per pipeline run.
+        // In future, could record per-step (vision, search, llm) separately.
+        $this->usageLedger->record([
+            'vendor_id'     => $vendorId,
+            'job_id'        => $jobId,
+            'provider'      => $usage['providers'] ? array_key_first($usage['providers']) : '',
+            'capability'    => 'product_generation',
+            'input_tokens'  => 0, // not tracked in summary
+            'output_tokens' => 0,
+            'images'        => $usage['images'] ?? 0,
+            'searches'      => $usage['searches'] ?? 0,
+            'cost'          => $usage['cost'] ?? 0.0,
+            'latency_ms'    => $usage['latency_ms'] ?? 0,
+            'metadata'      => [
+                'providers' => $usage['providers'] ?? [],
+                'requests'  => $usage['requests'] ?? 0,
+            ],
+        ]);
+    }
+
     private function mergeContext(
         ImageContext $image,
         ?ProductContext $product,
@@ -102,12 +181,6 @@ class ProductGenerationPipeline
         );
     }
 
-    /**
-     * BuildSearchQuery functionality helper.
-     *
-     * @param array $context Description index.
-     * @return string Output payload.
-     */
     private function buildSearchQuery(array $context): string
     {
         $title = (string) ($context['product']['title'] ?? '');
@@ -124,12 +197,6 @@ class ProductGenerationPipeline
         return 'product details';
     }
 
-    /**
-     * ArrayValue functionality helper.
-     *
-     * @param mixed $value Description index.
-     * @return array Output payload.
-     */
     private function arrayValue(mixed $value): array
     {
         return is_array($value) ? $value : [];

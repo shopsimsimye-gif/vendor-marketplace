@@ -30,9 +30,20 @@ class ActionDispatcher
      */
     public function registerAjaxHooks(): void
     {
+        static $registered = [];
+
         $routes = $this->routeRegistry->getAjaxRoutes();
 
         foreach ($routes as $action => $routeData) {
+            $hookName = "wp_ajax_{$action}";
+            $hookNameNoPriv = "wp_ajax_nopriv_{$action}";
+
+            // Skip if already registered
+            if (isset($registered[$hookName])) {
+                continue;
+            }
+
+            error_log('[VMP][ActionDispatcher] Registering AJAX hook: ' . $action);
             $controller   = $routeData['controller'];
             $method       = $routeData['method'];
             $isPublic     = $routeData['is_public'];
@@ -44,9 +55,11 @@ class ActionDispatcher
             };
 
             add_action("wp_ajax_{$action}", $callback);
+            $registered[$hookName] = true;
 
             if ($isPublic) {
                 add_action("wp_ajax_nopriv_{$action}", $callback);
+                $registered[$hookNameNoPriv] = true;
             }
         }
     }

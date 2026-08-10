@@ -35,15 +35,7 @@ class CapabilityContext
         return new self('text', ['messages' => $messages, 'options' => $options], $options['workflow'] ?? 'product-image-v1', $options['vendor_id'] ?? null, $options['language'] ?? null, $options['model'] ?? null, false, $metadata);
     }
 
-    public static function imageGeneration(string $prompt, array $options = [], array $metadata = []): self
-    {
-        return new self('image_generation', ['prompt' => $prompt, 'options' => $options], $options['workflow'] ?? 'product-image-v1', $options['vendor_id'] ?? null, $options['language'] ?? null, $options['model'] ?? null, false, $metadata);
-    }
 
-    public static function streaming(array $messages, array $options = [], array $metadata = []): self
-    {
-        return new self('streaming', ['messages' => $messages, 'options' => $options], $options['workflow'] ?? 'product-image-v1', $options['vendor_id'] ?? null, $options['language'] ?? null, $options['model'] ?? null, true, $metadata);
-    }
 
     public function capability(): string
     {

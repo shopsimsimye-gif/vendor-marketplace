@@ -95,7 +95,11 @@ class Install {
             'vmp_vendor_reviews',
             'vmp_jobs',
             'vmp_ai_jobs',
+            'vmp_ai_job_locks',
+            'vmp_media',
             'vmp_rate_limits',
+            'vmp_ai_usage_ledger',
+            'vmp_vendor_requests',
         ];
 
         foreach ($tables as $table) {
@@ -445,6 +449,29 @@ class Install {
             KEY `idx_type` (`type`)
         ) {$charset_collate};";
 
+
+        // ── 13. جدول استخدام الذكاء الاصطناعي (ai_usage_ledger) ──
+        $tables[] = "CREATE TABLE `{$p}ai_usage_ledger` (
+            `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `vendor_id` BIGINT UNSIGNED NOT NULL,
+            `job_id` VARCHAR(80) NOT NULL DEFAULT '',
+            `provider` VARCHAR(100) NOT NULL DEFAULT '',
+            `capability` VARCHAR(100) NOT NULL DEFAULT '',
+            `input_tokens` INT UNSIGNED NOT NULL DEFAULT 0,
+            `output_tokens` INT UNSIGNED NOT NULL DEFAULT 0,
+            `total_tokens` INT UNSIGNED NOT NULL DEFAULT 0,
+            `images` INT UNSIGNED NOT NULL DEFAULT 0,
+            `searches` INT UNSIGNED NOT NULL DEFAULT 0,
+            `cost` DECIMAL(15,6) NOT NULL DEFAULT 0.000000,
+            `latency_ms` INT UNSIGNED NOT NULL DEFAULT 0,
+            `metadata` LONGTEXT,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            KEY `idx_vendor_date` (`vendor_id`, `created_at`),
+            KEY `idx_vendor_month` (`vendor_id`, `created_at`),
+            KEY `idx_job_id` (`job_id`),
+            KEY `idx_provider` (`provider`)
+        ) {$charset_collate};";
         // ── جدول الصرّف الذري (rate limit) ──
         $tables[] = "CREATE TABLE `{$p}rate_limits` (
             `bucket` VARCHAR(32) NOT NULL,
@@ -553,7 +580,7 @@ class Install {
 
             // Fix store_address to allow empty string
             if (isset($col_map['store_address']) && stripos((string)($col_map['store_address'] ?? ''), 'NOT NULL') !== false) {
-                $wpdb->query("ALTER TABLE `{$req_table}` MODIFY `store_address` LONGTEXT NOT NULL DEFAULT ''");
+                $wpdb->query("ALTER TABLE `{$req_table}` MODIFY `store_address` LONGTEXT NULL");
             }
             // Fix store_phone to allow empty string
             if (isset($col_map['store_phone'])) {
@@ -927,3 +954,5 @@ class Install {
         update_option('vmp_settings', $settings);
     }
 }
+
+        

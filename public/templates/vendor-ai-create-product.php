@@ -44,7 +44,7 @@ $nav_file = VMP_PLUGIN_DIR . 'public/templates/partials/vendor-nav.php';
                     <span class="vmp-ai-dropzone-icon">+</span>
                     <strong><?php _e('اختر صورة المنتج', 'vmp'); ?></strong>
                     <small><?php _e('JPG أو PNG، ويفضل صورة واضحة بخلفية بسيطة.', 'vmp'); ?></small>
-                    <input id="vmp-ai-product-image" name="image" type="file" accept="image/*" required>
+                    <input id="vmp-ai-product-image" name="image" type="file" accept="image/*">
                 </label>
 
                 <div id="vmp-ai-image-preview" class="vmp-ai-image-preview" hidden></div>

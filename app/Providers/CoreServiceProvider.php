@@ -28,6 +28,7 @@ use VMP\Services\SubscriptionService;
 use VMP\Services\WithdrawalService;
 use VMP\Services\WhatsappService;
 use VMP\Services\VendorRegistrationService;
+use VMP\Controllers\AIProductController;
 use VMP\Core\EventManager;
 use VMP\Core\Logger;
 use VMP\Core\ViewRenderer;
@@ -45,11 +46,6 @@ use VMP\Controllers\WithdrawalController;
 use VMP\Controllers\WhatsappController;
 use VMP\Controllers\VendorRegistrationController;
 use VMP\Controllers\AiSettingsController;
-use VMP\Controllers\MediaController;
-use VMP\Services\MediaService;
-use VMP\Contracts\MediaRepositoryInterface;
-use VMP\Repositories\MediaRepository;
-use VMP\Controllers\AIProductController;
 use VMP\Controllers\TemplateController;
 use VMP\Controllers\ReportController;
 use VMP\Controllers\SettingsController;
@@ -203,11 +199,7 @@ class CoreServiceProvider extends ServiceProvider
             return $this->container->make(VendorRequestRepository::class);
         });
 
-        // ─── Media Repository (Media Core) ───
-        $this->container->singleton(MediaRepositoryInterface::class, function () {
-            return $this->container->make(MediaRepository::class);
-        });
-
+        
         $interfaceMap = [
             OrderRepositoryInterface::class           => OrderRepository::class,
             CommissionRepositoryInterface::class      => CommissionRepository::class,
@@ -223,12 +215,7 @@ class CoreServiceProvider extends ServiceProvider
             );
         }
 
-        // ─── Media Service (Media Core) ───
-        $this->container->singleton(MediaService::class, function () {
-            return new MediaService(
-                $this->container->make(MediaRepositoryInterface::class)
-            );
-        });
+
     }
 
     /**
@@ -387,12 +374,7 @@ class CoreServiceProvider extends ServiceProvider
             return new AiSettingsController($this->container->make(Logger::class));
         });
 
-        $this->container->singleton(MediaController::class, function () {
-            return new MediaController(
-                $this->container->make(MediaService::class),
-                $this->container->make(MediaRepositoryInterface::class)
-            );
-        });
+
     }
 
     /**
@@ -513,10 +495,7 @@ class CoreServiceProvider extends ServiceProvider
         $registry->ajax('vmp_admin_get_whatsapp_chart',   WhatsappController::class, 'adminGetChart',       false, 'vmp_admin_nonce');
         $registry->ajax('vmp_admin_get_vendor_whatsapp_stats', WhatsappController::class, 'adminGetVendorStats', false, 'vmp_admin_nonce');
 
-        // ─── Media Routes (Media Core) ───
-        $registry->ajax('vmp_media_upload',  MediaController::class, 'upload',  false, 'vmp_public_nonce');
-        $registry->ajax('vmp_media_delete',  MediaController::class, 'destroy', false, 'vmp_public_nonce');
-        $registry->ajax('vmp_media_list',    MediaController::class, 'index',   false, 'vmp_public_nonce');
+
     }
 
     /**

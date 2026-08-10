@@ -9,33 +9,29 @@ use VMP\Modules\AbstractModule;
 /**
  * Class VendorModule
  *
- * Description of administrative platform component VendorModule.
- *
  * @package vendor-marketplace
  */
 class VendorModule extends AbstractModule
 {
-    private VendorHooks $hooks;
-
     /**
-     *   Construct functionality helper.
+     * Construct functionality helper.
      *
-     * @param Container $container Description index.
-     * @return void Output payload.
+     * @param Container $container
+     * @return void
      */
     public function __construct(Container $container)
     {
         parent::__construct($container);
-        $this->hooks = new VendorHooks($container);
+        // VendorHooks removed (legacy) — AJAX routes registered in CoreServiceProvider via VendorController
     }
 
     /**
      * Init functionality helper.
      *
-     * @return void Output payload.
+     * @return void
      */
     public function init(): void
     {
-        $this->hooks->register();
+        // No legacy hooks to register
     }
 }

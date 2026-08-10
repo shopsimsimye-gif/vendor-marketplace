@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace VMP\Modules;
+namespace VMP\Modules\Media;
 
 defined('ABSPATH') || exit;
 
-use VMP\Contracts\MediaRepositoryInterface;
+use VMP\Modules\AbstractModule;
+use VMP\Modules\Media\Contracts\MediaRepositoryInterface;
 
-class Media extends AbstractModule
+class MediaModule extends AbstractModule
 {
     public function init(): void
     {

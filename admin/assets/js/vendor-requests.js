@@ -6,6 +6,22 @@
     'use strict';
     
     let currentRequestId = null;
+
+    function escapeHtml(value) {
+        return $('<div>').text(value == null ? '' : String(value)).html();
+    }
+
+    function safeUrl(value) {
+        const raw = String(value == null ? '' : value).trim();
+        if (!raw) return '';
+        try {
+            const url = new URL(raw, window.location.origin);
+            if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+            return escapeHtml(url.href);
+        } catch (e) {
+            return '';
+        }
+    }
     
     $(document).ready(function() {
         initModals();
@@ -93,7 +109,7 @@
             if (response.success) {
                 renderRequestDetails(response.data);
             } else {
-                $('#vmp-modal-body').html('<p class="vmp-error">' + (response.data?.message || 'فشل التحميل') + '</p>');
+                $('#vmp-modal-body').html('<p class="vmp-error">' + escapeHtml(response.data?.message || 'فشل التحميل') + '</p>');
             }
         })
         .fail(function() {
@@ -103,7 +119,7 @@
     
     function renderRequestDetails(data) {
         let html = '<div class="vmp-request-detail">';
-        
+
         const fields = [
             { key: 'id', label: 'معرف الطلب' },
             { key: 'store_name', label: 'اسم المتجر' },
@@ -117,42 +133,59 @@
             { key: 'created_at', label: 'تاريخ الطلب' },
             { key: 'admin_notes', label: 'ملاحظات المشرف' },
         ];
-        
+
         fields.forEach(field => {
-            let value = data[field.key];
-            if (!value && value !== 0) return;
-            
+            let rawValue = data[field.key];
+            if (rawValue == null || rawValue === '') return;
+
+            let value = escapeHtml(rawValue);
+
             if (field.key === 'store_slug') {
-                value = '<a href="' + value + '" target="_blank" rel="noopener">' + value + '</a>';
+                const href = safeUrl(rawValue);
+                value = href
+                    ? '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(rawValue) + '</a>'
+                    : escapeHtml(rawValue);
             } else if (field.key === 'status') {
-                const statusLabels = { pending: 'قيد المراجعة', approved: 'مقبولة', rejected: 'مرفوضة' };
-                value = '<span class="vmp-status-badge vmp-status-' + value + '">' + (statusLabels[value] || value) + '</span>';
+                const status = String(rawValue);
+                const allowedStatuses = ['pending', 'approved', 'rejected'];
+                const safeStatus = allowedStatuses.includes(status) ? status : 'unknown';
+                const statusLabels = {
+                    pending: 'قيد المراجعة',
+                    approved: 'مقبولة',
+                    rejected: 'مرفوضة'
+                };
+                value = '<span class="vmp-status-badge vmp-status-' + safeStatus + '">' +
+                    escapeHtml(statusLabels[status] || status) + '</span>';
             } else if (field.key === 'created_at') {
-                value = new Date(value.replace(' ', 'T')).toLocaleString('ar-SA');
+                const date = new Date(String(rawValue).replace(' ', 'T'));
+                if (!Number.isNaN(date.getTime())) {
+                    value = escapeHtml(date.toLocaleString('ar-SA'));
+                }
             }
-            
+
             const isFull = ['store_description', 'store_address', 'admin_notes'].includes(field.key);
             html += '<div class="vmp-detail-field' + (isFull ? ' vmp-detail-full' : '') + '">';
-            html += '<div class="vmp-detail-label">' + field.label + '</div>';
+            html += '<div class="vmp-detail-label">' + escapeHtml(field.label) + '</div>';
             html += '<div class="vmp-detail-value">' + value + '</div>';
             html += '</div>';
         });
-        
-        // Images
+
         ['store_logo', 'store_banner', 'license_file'].forEach(key => {
             if (data[key] && data[key].url) {
+                const href = safeUrl(data[key].url);
+                if (!href) return;
                 const labels = { store_logo: 'الشعار', store_banner: 'صورة الغلاف', license_file: 'الرخصة' };
                 html += '<div class="vmp-detail-field vmp-detail-full">';
-                html += '<div class="vmp-detail-label">' + labels[key] + '</div>';
-                html += '<div class="vmp-detail-value"><img src="' + data[key].url + '" alt="" class="vmp-detail-image"></div>';
+                html += '<div class="vmp-detail-label">' + escapeHtml(labels[key]) + '</div>';
+                html += '<div class="vmp-detail-value"><img src="' + href + '" alt="" class="vmp-detail-image" loading="lazy"></div>';
                 html += '</div>';
             }
         });
-        
+
         html += '</div>';
         $('#vmp-modal-body').html(html);
     }
-    
+
     function doAction(action, requestId, reason = '') {
         const $row = $('tr[data-request-id="' + requestId + '"]');
         $row.addClass('vmp-loading');
@@ -193,7 +226,8 @@
     }
     
     function showNotice(message, type) {
-        const $notice = $('<div class="notice notice-' + (type === 'error' ? 'error' : 'success') + ' is-dismissible"><p>' + message + '</p></div>');
+        const $notice = $('<div class="notice notice-' + (type === 'error' ? 'error' : 'success') + ' is-dismissible"><p></p></div>');
+        $notice.find('p').text(message == null ? '' : String(message));
         $('.vmp-vendor-requests-wrap').prepend($notice);
         
         setTimeout(function() {

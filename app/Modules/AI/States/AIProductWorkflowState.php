@@ -22,4 +22,5 @@ final class AIProductWorkflowState
     public const DRAFT = 'DRAFT';
     public const PUBLISHED = 'PUBLISHED';
     public const FAILED = 'FAILED';
+    public const RATE_LIMITED = 'RATE_LIMITED';
 }

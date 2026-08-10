@@ -6,8 +6,6 @@ defined('ABSPATH') || exit;
 /**
  * Class Kernel
  *
- * Description of administrative platform component Kernel.
- *
  * @package vendor-marketplace
  */
 class Kernel
@@ -17,7 +15,7 @@ class Kernel
     private array $providers = [
         \VMP\Providers\InstallServiceProvider::class,
         \VMP\Providers\CoreServiceProvider::class,
-        \VMP\Providers\EventServiceProvider::class,   // ← نظام الأحداث والمستمعين
+        \VMP\Providers\EventServiceProvider::class,
         \VMP\Providers\WooCommerceServiceProvider::class,
         \VMP\Providers\AdminServiceProvider::class,
         \VMP\Providers\VendorServiceProvider::class,
@@ -27,22 +25,11 @@ class Kernel
 
     private array $providerInstances = [];
 
-    /**
-     *   Construct functionality helper.
-     *
-     * @param Container $container Description index.
-     * @return void Output payload.
-     */
     public function __construct(Container $container)
     {
         $this->container = $container;
     }
 
-    /**
-     * Register functionality helper.
-     *
-     * @return void Output payload.
-     */
     public function register(): void
     {
         if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -88,11 +75,6 @@ class Kernel
         }
     }
 
-    /**
-     * Boot functionality helper.
-     *
-     * @return void Output payload.
-     */
     public function boot(): void
     {
         if (defined('WP_DEBUG') && WP_DEBUG) {
@@ -138,11 +120,12 @@ class Kernel
             }
         }
 
-        // 5. باقي المزودات
+        // 4. باقي المزودات — ما عدا CoreServiceProvider (سيُستدعى بعد الموديولات)
         $skipClasses = [
             \VMP\Providers\InstallServiceProvider::class,
             \VMP\Providers\WooCommerceServiceProvider::class,
             \VMP\Providers\VendorServiceProvider::class,
+            \VMP\Providers\CoreServiceProvider::class, // ← يُستدعى لاحقاً
         ];
 
         foreach ($this->providerInstances as $provider) {
@@ -164,8 +147,21 @@ class Kernel
             }
         }
 
-        // 6. تحميل الوحدات (بغض النظر عن WooCommerce)
+        // 5. تحميل الوحدات (تسجل AJAX/REST routes الخاصة بها)
         $this->registerModules();
+
+        // 6. الآن CoreServiceProvider::boot() — يسجل AJAX hooks بعد اكتمال كل routes
+        foreach ($this->providerInstances as $provider) {
+            if ($provider instanceof \VMP\Providers\CoreServiceProvider) {
+                if (method_exists($provider, 'boot')) {
+                    $provider->boot();
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('[VMP][Kernel] CoreServiceProvider->boot() executed (after modules)');
+                    }
+                }
+                break;
+            }
+        }
 
         // 7. تحميل ملفات اللغة
         $this->loadTextDomain();
@@ -175,11 +171,6 @@ class Kernel
         }
     }
 
-    /**
-     * RegisterModules functionality helper.
-     *
-     * @return void Output payload.
-     */
     public function registerModules(): void
     {
         $manager = $this->container->make('module_manager');
@@ -188,7 +179,7 @@ class Kernel
         }
 
         $modules = [
-            'vendor',        // ✅ وحدة البائع (تشمل هوكات إعادة التوجيه)
+            'vendor',
             'order',
             'commission',
             'subscription',
@@ -196,8 +187,8 @@ class Kernel
             'template',
             'notification',
             'settings',
+            'media',
             'ai',
-            'media', // ✅ وحدة الوسائط (Media Core)
         ];
 
         foreach ($modules as $module) {
@@ -215,15 +206,15 @@ class Kernel
         }
     }
 
-    /**
-     * LoadTextDomain functionality helper.
-     *
-     * @return void Output payload.
-     */
     public function loadTextDomain(): void
     {
         if (function_exists('load_plugin_textdomain')) {
             load_plugin_textdomain('vmp', false, dirname(VMP_PLUGIN_BASENAME) . '/languages');
         }
+    }
+
+    public function getContainer(): Container
+    {
+        return $this->container;
     }
 }

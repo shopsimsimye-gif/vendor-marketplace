@@ -22,6 +22,7 @@ use VMP\Modules\AI\Cost\CostTracker;
 use VMP\Modules\AI\ProviderFailover;
 use VMP\Modules\AI\ProviderHealth;
 use VMP\Modules\AI\Pipelines\ProductGenerationPipeline;
+use VMP\Modules\AI\Repositories\AIUsageLedgerRepository;
 use VMP\Controllers\AIProductController;
 use VMP\Modules\AI\ProviderResolver;
 use VMP\Modules\AI\Providers\UnconfiguredImageGenerationProvider;
@@ -37,7 +38,6 @@ use VMP\Modules\AI\ProviderHealthScore;
 use VMP\Modules\AI\RetryPolicy;
 use VMP\Support\CacheManager;
 use VMP\Services\SubscriptionService;
-use VMP\Services\MediaService;
 
 class AIServiceProvider extends ServiceProvider
 {
@@ -46,6 +46,7 @@ class AIServiceProvider extends ServiceProvider
         $this->container->singleton(AIConfiguration::class, static fn(): AIConfiguration => new AIConfiguration());
         $this->container->singleton(CostTracker::class, static fn(): CostTracker => new CostTracker());
         $this->container->singleton(AIJobRepository::class, static fn(): AIJobRepository => new AIJobRepository($GLOBALS['wpdb']));
+        $this->container->singleton(AIUsageLedgerRepository::class, static fn(): AIUsageLedgerRepository => new AIUsageLedgerRepository($GLOBALS['wpdb']));
 
         // Encryption & Secret management
         $this->container->singleton(\VMP\Modules\AI\Security\KeyManager::class, function () {
@@ -131,7 +132,8 @@ class AIServiceProvider extends ServiceProvider
         $this->container->singleton(ProductGenerationPipeline::class, fn(): ProductGenerationPipeline => new ProductGenerationPipeline(
             $this->container->make(AIOrchestrator::class),
             $this->container->make(CostTracker::class),
-            $this->container->make(AIConfiguration::class)
+            $this->container->make(AIConfiguration::class),
+            $this->container->make(AIUsageLedgerRepository::class)
         ));
         $this->container->singleton(AIProductDraftService::class, fn(): AIProductDraftService => new AIProductDraftService(
             $this->container->make(ProductGenerationPipeline::class),
@@ -143,8 +145,7 @@ class AIServiceProvider extends ServiceProvider
         $this->container->singleton(AIProductController::class, fn(): AIProductController => new AIProductController(
             $this->container->make(VendorRepositoryInterface::class),
             $this->container->make(AIProductDraftService::class),
-            $this->container->make(SubscriptionService::class),
-            $this->container->make(MediaService::class)
+            $this->container->make(SubscriptionService::class)
         ));
     }
 

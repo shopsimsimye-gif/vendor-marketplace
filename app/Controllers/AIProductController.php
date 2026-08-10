@@ -6,7 +6,8 @@ defined('ABSPATH') || exit;
 use VMP\Contracts\VendorRepositoryInterface;
 use VMP\Services\SubscriptionService;
 use VMP\Modules\AI\Services\AIProductDraftService;
-use VMP\Services\MediaService;
+use VMP\Modules\Media\Services\MediaService;
+use VMP\Core\Container;
 
 /**
  * Class AIProductController
@@ -20,9 +21,24 @@ class AIProductController
     public function __construct(
         private VendorRepositoryInterface $vendors,
         private AIProductDraftService $drafts,
-        private SubscriptionService $subscriptionService,
-        private MediaService $mediaService
+        private SubscriptionService $subscriptionService
+        // MediaService يتم حلّه بشكل lazy لتجنب مشاكل ترتيب تحميل الموديولات
     ) {
+    }
+
+    /**
+     * الحصول على MediaService من الـ Container (lazy loading).
+     */
+    private function getMediaService(): MediaService
+    {
+        $container = Container::getInstance();
+        $service = $container->make(MediaService::class);
+        
+        if ($service === null) {
+            throw new \RuntimeException(__('خدمة الوسائط غير متاحة حالياً.', 'vmp'));
+        }
+        
+        return $service;
     }
 
     /**
@@ -35,7 +51,7 @@ class AIProductController
         try {
             $this->verifyRequest();
             $vendor = $this->currentVendor();
-            $attachmentId = $this->handleUpload();
+            $attachmentId = $this->handleImage();
 
             // التحقق من توفر ميزة إنشاء المنتج بالذكاء الاصطناعي
             if (!$this->subscriptionService->hasFeature((int) $vendor->id, 'ai_product_generator')) {
@@ -188,7 +204,7 @@ class AIProductController
                 throw new \RuntimeException(__('رابط الصورة مفقود.', 'vmp'));
             }
 
-            $media = $this->mediaService->createFromAI($imageData, (int) $vendor->id);
+            $media = $this->getMediaService()->createFromAI($imageData, (int) $vendor->id);
 
             if (!$media) {
                 throw new \RuntimeException(__('فشل حفظ الصورة في مكتبة الوسائط.', 'vmp'));
@@ -237,15 +253,27 @@ class AIProductController
     }
 
     /**
-     * HandleUpload functionality helper.
+     * HandleImage functionality helper - supports both file upload and media library selection.
      *
      * @throws \\RuntimeException Diagnostic error when triggered.
-     * @return int Output payload.
+     * @return int Output payload (attachment ID).
      */
-    private function handleUpload(): int
+    private function handleImage(): int
     {
+        // Case 1: Image picked from media library (ai_image_id sent)
+        $aiImageId = isset($_POST['ai_image_id']) ? (int) $_POST['ai_image_id'] : 0;
+        if ($aiImageId > 0) {
+            // Verify the attachment exists and is an image
+            $attachmentPost = get_post($aiImageId);
+            if ($attachmentPost && $attachmentPost->post_type === 'attachment' && str_starts_with($attachmentPost->post_mime_type, 'image/')) {
+                return $aiImageId;
+            }
+            throw new \RuntimeException(__('الصورة المختارة من مكتبة الوسائط غير صالحة.', 'vmp'));
+        }
+
+        // Case 2: File upload (traditional method)
         if (empty($_FILES['image'])) {
-            throw new \RuntimeException(__('يرجى رفع صورة المنتج.', 'vmp'));
+            throw new \RuntimeException(__('يرجى رفع صورة المنتج أو اختيار صورة من مكتبة الوسائط.', 'vmp'));
         }
 
         require_once ABSPATH . 'wp-admin/includes/file.php';

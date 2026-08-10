@@ -37,10 +37,6 @@ class SecretManager
         return $this->encryption->decrypt($ciphertext_b64, $iv_b64, $tag_b64, $rawKey);
     }
 
-    public function generateIV(): string
-    {
-        return base64_encode(random_bytes(12));
-    }
 
     public function validateKey(): bool
     {

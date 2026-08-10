@@ -12,6 +12,7 @@ class RetryLaterException extends \RuntimeException
     private int $delaySeconds;
     private int $maxRetries;
     private int $attemptNumber;
+    private int $retryAfter;
 
     public function __construct(
         string $message = '',
@@ -24,6 +25,7 @@ class RetryLaterException extends \RuntimeException
         $this->delaySeconds = max(1, $delaySeconds);
         $this->maxRetries = max(1, $maxRetries);
         $this->attemptNumber = max(1, $attemptNumber);
+        $this->retryAfter = $this->delaySeconds; // For rate limits, use fixed delay
     }
 
     public function getDelaySeconds(): int
@@ -39,6 +41,14 @@ class RetryLaterException extends \RuntimeException
     public function getAttemptNumber(): int
     {
         return $this->attemptNumber;
+    }
+
+    /**
+     * Get the retry-after seconds (for rate limit responses).
+     */
+    public function getRetryAfter(): int
+    {
+        return $this->retryAfter;
     }
 
     /**

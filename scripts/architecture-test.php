@@ -39,6 +39,13 @@ const LEGACY_DEAD_METHODS=[
     'app/Modules/Vendor/VendorServiceProvider.php'=>['registerAjaxHandlers','registerRestRoutes','enqueueAssets'],
     'app/Controllers/RestVendorRegistrationController.php'=>['registerRoutes','init'],
 ];
+// Controllers that register routes via RouteRegistry::ajax() (allowed to use $registry->ajax())
+const REGISTRY_AJAX_FILES=[
+    'app/Providers/CoreServiceProvider.php',
+    'app/Modules/Media/Http/Controllers/Api/MediaApiController.php',
+    'app/Modules/AI/Http/Controllers/Api/AIProductController.php',
+    'app/Modules/AI/Http/Controllers/Api/AiSettingsController.php',
+];
 const PREFIX='[Architecture] ';
 $W=[];$V=0;
 function fail(string $m):void{global $W,$V;$W[]=$m;$V++;echo PREFIX."FAIL  $m\n";}
@@ -104,16 +111,36 @@ foreach($phpFiles as $file){
 foreach($restUnallowed as $key=>$locs){foreach($locs as $l) fail("REST route '$key' registered outside whitelist at $l");}
 foreach($restLive as $key=>$locs){ if(count($locs)>1) fail("LIVE REST route '$key' registered ".count($locs)." times: ".implode('; ',$locs)); }
 
-// RouteRegistry
-$regLive=$perFile['app/Providers/CoreServiceProvider.php']??[];
-foreach($regLive as $ln=>$code){
-    if(preg_match("/\\\$registry->ajax\(\s*'([a-z0-9_]+)'\s*,\s*([A-Za-z0-9_\\\\]+)::class\s*,\s*'([a-zA-Z0-9_]+)'/",$code,$m)){
-        $bare=$m[1];$entry=['controller'=>trim($m[2]),'method'=>$m[3],'line'=>$ln];
-        if(isset($registered[$bare])){$dupActions[$bare][]=$registered[$bare]['line'];$dupActions[$bare][]=$ln;}
-        $registered[$bare]=$entry;
+// RouteRegistry — scan all allowed files that use $registry->ajax()
+// Pattern 1: $registry->ajax('action', Class::class, 'method', ...)
+// Pattern 2: $registry->ajax('action', [$this, 'method'], ...)
+$registryFiles = REGISTRY_AJAX_FILES;
+$registered=[];
+$dupActions=[];
+foreach($registryFiles as $regFile){
+    $regLive=$perFile[$regFile]??[];
+    foreach($regLive as $ln=>$code){
+        // Pattern 1: Class::class syntax (CoreServiceProvider style)
+        if(preg_match("/\\\$registry->ajax\(\s*'([a-z0-9_]+)'\s*,\s*([A-Za-z0-9_\\\\]+)::class\s*,\s*'([a-zA-Z0-9_]+)'/",$code,$m)){
+            $bare=$m[1];$entry=['controller'=>trim($m[2]),'method'=>$m[3],'line'=>$ln,'file'=>$regFile];
+            if(isset($registered[$bare])){$dupActions[$bare][]=$registered[$bare]['line'].' ('.$registered[$bare]['file'].')';$dupActions[$bare][]=$ln.' ('.$regFile.')';}
+            $registered[$bare]=$entry;
+        }
+        // Pattern 2: [$this, 'method'] syntax (MediaApiController style)
+        elseif(preg_match("/\\\$registry->ajax\(\s*'([a-z0-9_]+)'\s*,\s*\[\s*\\\$this\s*,\s*'([a-zA-Z0-9_]+)'\s*\]/",$code,$m)){
+            $bare=$m[1];
+            // Infer controller class from file path
+            if(str_contains($regFile,'Media')) $controller='\\VMP\\Modules\\Media\\Http\\Controllers\\Api\\MediaApiController';
+            elseif(str_contains($regFile,'AIProduct')) $controller='\\VMP\\Modules\\AI\\Http\\Controllers\\Api\\AIProductController';
+            elseif(str_contains($regFile,'AiSettings')) $controller='\\VMP\\Modules\\AI\\Http\\Controllers\\Api\\AiSettingsController';
+            else $controller='\\VMP\\Modules\\Unknown';
+            $entry=['controller'=>$controller,'method'=>$m[2],'line'=>$ln,'file'=>$regFile];
+            if(isset($registered[$bare])){$dupActions[$bare][]=$registered[$bare]['line'].' ('.$registered[$bare]['file'].')';$dupActions[$bare][]=$ln.' ('.$regFile.')';}
+            $registered[$bare]=$entry;
+        }
     }
 }
-foreach($dupActions as $a=>$ls) fail("Duplicate RouteRegistry registration of '$a' (CoreServiceProvider.php lines ".implode(', ',array_unique($ls)).')');
+foreach($dupActions as $a=>$ls) fail("Duplicate RouteRegistry registration of '$a' (lines ".implode(', ',array_unique($ls)).')');
 
 // UI references
 $refPatterns=[
@@ -163,9 +190,6 @@ foreach($phpFiles as $f){
 }
 if($usesNullable){
     $engine=file_get_contents($root.'/app/Http/Requests/AbstractRequest.php');
-    // Engine support = 'nullable' token appears anywhere inside applyRule
-    // (token matches a string literal, not just a comment). strpos is exact
-    // and avoids quoting pitfalls of regex in shell-invoked PHP.
     $engineHasNullable = strpos($engine, "'nullable'") !== false;
     if(!$engineHasNullable){
         fail("Requests use 'nullable' rule but AbstractRequest::applyRule does not support it — runtime InvalidArgumentException.");

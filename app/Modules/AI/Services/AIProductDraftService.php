@@ -16,11 +16,12 @@ use VMP\Modules\AI\Pipelines\ProductGenerationPipeline;
 use VMP\Modules\AI\Repositories\AIJobRepository;
 use VMP\Modules\AI\Results\AIResult;
 use VMP\Modules\AI\States\AIProductWorkflowState;
+use VMP\Modules\AI\Exceptions\RetryLaterException;
 
 /**
  * Class AIProductDraftService
  *
- * Description of administrative platform component AIProductDraftService.
+ * AI product draft service with vendor usage limit enforcement.
  *
  * @package vendor-marketplace
  */
@@ -35,13 +36,6 @@ class AIProductDraftService
     ) {
     }
 
-    /**
-     * CreateJob functionality helper.
-     *
-     * @param object $vendor Description index.
-     * @param int $attachmentId Description index.
-     * @return array Output payload.
-     */
     public function createJob(object $vendor, int $attachmentId): array
     {
         $job = $this->jobs->create([
@@ -57,7 +51,6 @@ class AIProductDraftService
             ]],
         ]);
 
-        // Record job created and queued events
         try {
             $this->jobs->appendEvent($job['id'], 'JobCreated', ['vendor_id' => (int) $vendor->id, 'attachment_id' => $attachmentId]);
             $this->jobs->appendEvent($job['id'], 'Queued', ['queue_adapter' => get_class($this->queue)]);
@@ -67,7 +60,6 @@ class AIProductDraftService
             }
         }
 
-        // Enqueue the new AIJobWorker which runs the WorkflowEngine steps
         $queueId = $this->queue->push(\VMP\Modules\AI\Jobs\AIJobWorker::class, [
             'job_id' => $job['id'],
             'vendor_id' => (int) $vendor->id,
@@ -89,27 +81,11 @@ class AIProductDraftService
         return $this->getJob($job['id'], (int) $vendor->id) ?? $job;
     }
 
-    /**
-     * GetJob functionality helper.
-     *
-     * @param string $jobId Description index.
-     * @param int $vendorId Description index.
-     * @return ?array Output payload.
-     */
     public function getJob(string $jobId, int $vendorId): ?array
     {
         return $this->jobs->findForVendor($jobId, $vendorId);
     }
 
-    /**
-     * Regenerate functionality helper.
-     *
-     * @param string $jobId Description index.
-     * @param object $vendor Description index.
-     * @param string $part Description index.
-     * @throws \AIException Diagnostic error when triggered.
-     * @return array Output payload.
-     */
     public function regenerate(string $jobId, object $vendor, string $part): array
     {
         $job = $this->requireJob($jobId, (int) $vendor->id);
@@ -144,15 +120,6 @@ class AIProductDraftService
         return $job;
     }
 
-    /**
-     * Publish functionality helper.
-     *
-     * @param string $jobId Description index.
-     * @param object $vendor Description index.
-     * @param array $data Description index.
-     * @throws \AIException Diagnostic error when triggered.
-     * @return array Output payload.
-     */
     public function publish(string $jobId, object $vendor, array $data): array
     {
         $job = $this->requireJob($jobId, (int) $vendor->id);
@@ -211,13 +178,6 @@ class AIProductDraftService
         ];
     }
 
-    /**
-     * ProcessJob functionality helper.
-     *
-     * @param string $jobId Description index.
-     * @param object $vendor Description index.
-     * @return void Output payload.
-     */
     public function processQueuedJob(string $jobId, int $vendorId): void
     {
         try {
@@ -242,13 +202,28 @@ class AIProductDraftService
                     $this->transition($jobId, AIProductWorkflowState::GENERATING_DESCRIPTION, 75);
                     $this->transition($jobId, AIProductWorkflowState::GENERATING_SEO, 88);
 
+                    // Pass job_id to pipeline for usage ledger recording
                     $result = $this->pipeline->run(
                         new ImageContext($imageUrl ?: '', (int) $job['attachment_id']),
                         new ProductContext(locale: get_locale()),
                         new VendorContext((int) $vendor->id, (string) $vendor->store_name),
-                        new StoreContext((string) $vendor->store_name, get_locale(), function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : '')
+                        new StoreContext((string) $vendor->store_name, get_locale(), function_exists('get_woocommerce_currency') ? get_woocommerce_currency() : ''),
+                        ['job_id' => $jobId]
                     );
                     break;
+                } catch (RetryLaterException $e) {
+                    // Limit exceeded — mark job as rate-limited and do not retry
+                    $this->jobs->update($jobId, [
+                        'status' => AIProductWorkflowState::RATE_LIMITED,
+                        'current_step' => AIProductWorkflowState::RATE_LIMITED,
+                        'progress' => 100,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $this->jobs->appendLog($jobId, 'warning', $e->getMessage(), [
+                        'code' => $e->getCode(),
+                        'retry_after' => $e->getRetryAfter(),
+                    ]);
+                    throw $e; // Propagate to queue worker
                 } catch (\Throwable $e) {
                     $lastError = $e->getMessage();
                     $this->jobs->appendLog($jobId, 'warning', __('فشلت محاولة مزود الذكاء الاصطناعي وسيتم إعادة المحاولة.', 'vmp'), [
@@ -277,9 +252,11 @@ class AIProductDraftService
                 'latency' => (int) ($data['latency_ms'] ?? 0),
                 'error' => '',
             ]);
+        } catch (RetryLaterException $e) {
+            // Re-throw — already handled above, job marked as RATE_LIMITED
+            throw $e;
         } catch (\Throwable $e) {
-            // Log detailed exception for debugging when WP_DEBUG is enabled
-            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
                 error_log('[VMP-AI] processQueuedJob exception for job ' . $jobId . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             }
             $this->failJob($jobId, $e->getMessage());
@@ -287,14 +264,6 @@ class AIProductDraftService
         }
     }
 
-    /**
-     * FallbackResult functionality helper.
-     *
-     * @param array $job Description index.
-     * @param object $vendor Description index.
-     * @param string $reason Description index.
-     * @return AIResult Output payload.
-     */
     private function fallbackResult(array $job, object $vendor, string $reason): AIResult
     {
         return AIResult::fromArray([
@@ -335,13 +304,6 @@ class AIProductDraftService
         ]);
     }
 
-    /**
-     * FallbackTitle functionality helper.
-     *
-     * @param int $attachmentId Description index.
-     * @param string $suffix Description index.
-     * @return string Output payload.
-     */
     private function fallbackTitle(int $attachmentId, string $suffix = ''): string
     {
         $name = get_the_title($attachmentId);
@@ -350,13 +312,6 @@ class AIProductDraftService
         return trim($name . ($suffix ? ' - ' . $suffix : ''));
     }
 
-    /**
-     * FallbackDescription functionality helper.
-     *
-     * @param object $vendor Description index.
-     * @param bool $regenerated Description index.
-     * @return string Output payload.
-     */
     private function fallbackDescription(object $vendor, bool $regenerated = false): string
     {
         $prefix = $regenerated
@@ -371,12 +326,6 @@ class AIProductDraftService
         return sprintf(__('مسودة منتج قابلة للمراجعة من متجر %s.', 'vmp'), $vendor->store_name);
     }
 
-    /**
-     * FallbackKeywords functionality helper.
-     *
-     * @param object $vendor Description index.
-     * @return array Output payload.
-     */
     private function fallbackKeywords(object $vendor): array
     {
         return array_values(array_filter([
@@ -386,14 +335,6 @@ class AIProductDraftService
         ]));
     }
 
-    /**
-     * RequireJob functionality helper.
-     *
-     * @param string $jobId Description index.
-     * @param int $vendorId Description index.
-     * @throws \AIException Diagnostic error when triggered.
-     * @return array Output payload.
-     */
     private function requireJob(string $jobId, int $vendorId): array
     {
         $job = $this->getJob($jobId, $vendorId);
@@ -404,12 +345,6 @@ class AIProductDraftService
         return $job;
     }
 
-    /**
-     * SaveJob functionality helper.
-     *
-     * @param array $job Description index.
-     * @return void Output payload.
-     */
     private function transition(string $jobId, string $state, int $progress): void
     {
         $this->jobs->update($jobId, [
@@ -420,7 +355,6 @@ class AIProductDraftService
 
         $this->jobs->appendLog($jobId, 'info', sprintf(__('انتقلت المهمة إلى المرحلة: %s', 'vmp'), $state));
 
-        // Record a timeline event (step started)
         try {
             $this->jobs->appendEvent($jobId, 'StepStarted', ['step' => $state, 'progress' => $progress]);
         } catch (\Throwable $e) {
@@ -451,12 +385,6 @@ class AIProductDraftService
         }
     }
 
-    /**
-     * PromptVersion functionality helper.
-     *
-     * @param string $part Description index.
-     * @return string Output payload.
-     */
     private function promptVersion(string $part): string
     {
         return $part . '-prompt-v1';

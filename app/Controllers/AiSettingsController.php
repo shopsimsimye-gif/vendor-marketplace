@@ -31,19 +31,26 @@ class AiSettingsController extends BaseController
      */
     public function save(): ApiResponse
     {
+        // DEBUG: تتبع استدعاء الدالة
+        error_log('[VMP][AI SETTINGS] save() CALLED');
+        error_log('[VMP][AI SETTINGS] POST=' . print_r($_POST, true));
+
         // التحقق من nonce
         if (!check_ajax_referer('vmp_admin_nonce', 'nonce', false)) {
+            error_log('[VMP][AI SETTINGS] nonce failed');
             return new ErrorResponse(message: __('رمز الأمان غير صحيح.', 'vmp'));
         }
 
         // التحقق من صلاحية المشرف
         if (!current_user_can('vmp_manage_settings')) {
+            error_log('[VMP][AI SETTINGS] capability failed');
             return new ErrorResponse(message: __('غير مصرح لك.', 'vmp'));
         }
 
         // استقبال البيانات
         $settings = isset($_POST['vmp_ai_settings']) ? $_POST['vmp_ai_settings'] : [];
         if (empty($settings) || !is_array($settings)) {
+            error_log('[VMP][AI SETTINGS] settings missing or not array');
             return new ErrorResponse(message: __('لم يتم إرسال أي إعدادات.', 'vmp'));
         }
 
@@ -112,6 +119,8 @@ class AiSettingsController extends BaseController
             'تم حفظ إعدادات الذكاء الاصطناعي.',
             ['user_id' => get_current_user_id()]
         );
+
+        error_log('[VMP][AI SETTINGS] SAVE SUCCESS');
 
         return new SuccessResponse(message: __('تم حفظ إعدادات الذكاء الاصطناعي بنجاح.', 'vmp'));
     }

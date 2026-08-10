@@ -14,6 +14,16 @@ class Container
 {
     private static ?Container $instance = null;
 
+    /**
+     * Debug: Get all bindings keys
+     *
+     * @return array
+     */
+    public function getBindingsKeys(): array
+    {
+        return array_keys($this->bindings);
+    }
+
     /** @var array<string, mixed> */
     private array $instances = [];
 

@@ -33,6 +33,7 @@ class RouteRegistry
         string $nonce_action = '',
         string $nonce_field  = '_wpnonce'
     ): void {
+        error_log('[VMP][RouteRegistry] Registering: ' . $action);
         $this->ajaxRoutes[$action] = [
             'controller'   => $controller,
             'method'       => $method,

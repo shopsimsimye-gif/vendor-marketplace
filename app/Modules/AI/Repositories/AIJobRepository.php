@@ -216,47 +216,16 @@ class AIJobRepository implements AIJobRepositoryInterface
         return $this->update($id, ['progress' => max(0, min(100, $progress))]);
     }
 
-    public function updateCurrentStep(string $id, string $step): ?array
-    {
-        return $this->update($id, ['current_step' => $step]);
-    }
 
-    public function incrementRetry(string $id): ?array
-    {
-        $job = $this->find($id);
-        if (!$job) {
-            return null;
-        }
 
-        $retries = (int) ($job['retries'] ?? 0) + 1;
-        return $this->update($id, ['retries' => $retries]);
-    }
 
-    public function updateCost(string $id, float $cost): ?array
-    {
-        return $this->update($id, ['cost' => (float) $cost]);
-    }
 
-    public function updateTokens(string $id, array $tokens): ?array
-    {
-        return $this->update($id, ['tokens' => $tokens]);
-    }
-
-    public function updateLatency(string $id, int $latencyMs): ?array
-    {
-        return $this->update($id, ['latency' => (int) $latencyMs]);
-    }
 
     public function markFailed(string $id, string $error): ?array
     {
         return $this->update($id, ['status' => 'FAILED', 'current_step' => 'FAILED', 'progress' => 100, 'error' => $error]);
     }
 
-    public function markCompleted(string $id, array $data = []): ?array
-    {
-        $data = array_merge(['status' => 'COMPLETED', 'progress' => 100], $data);
-        return $this->update($id, $data);
-    }
 
     private function serialize(array $data): array
     {

@@ -32,8 +32,50 @@ if (!defined('VMP_PLUGIN_BASENAME')) {
     define('VMP_PLUGIN_BASENAME', plugin_basename(__FILE__));
 }
 if (!defined('VMP_VERSION')) {
-    define('VMP_VERSION', '1.0.0');
+    define('VMP_VERSION', '1.0.1');
 }
+
+// ────────────────────────────────────────────────
+// Fix: WoodMart theme missing CSS paths (WP 7.0+)
+// Prevents PHP notices from polluting debug.log.
+// ────────────────────────────────────────────────
+add_action('wp_default_styles', function (WP_Styles $wp_styles) {
+    $woodmart_handles = [
+        'wd-style-base',
+        'wd-header-base',
+        'wd-page-search-results',
+        'wd-int-rank-math',
+        'wd-elementor-base',
+        'wd-woocommerce-base',
+        'wd-woo-shop-page-title',
+        'wd-woo-mod-shop-loop-head',
+    ];
+
+    foreach ($woodmart_handles as $handle) {
+        if (!isset($wp_styles->registered[$handle])) {
+            continue;
+        }
+
+        $style = $wp_styles->registered[$handle];
+
+        // Already has a valid absolute path — nothing to do
+        if (!empty($style->extra['path']) && file_exists($style->extra['path'])) {
+            continue;
+        }
+
+        // Rebuild absolute path from the registered src
+        if (empty($style->src)) {
+            continue;
+        }
+
+        $relative_path = ltrim(parse_url($style->src, PHP_URL_PATH) ?? '', '/');
+        $absolute_path = ABSPATH . $relative_path;
+
+        if (file_exists($absolute_path)) {
+            $wp_styles->registered[$handle]->extra['path'] = $absolute_path;
+        }
+    }
+});
 
 add_action('parse_request', function ($wp) {
     if (is_admin()) {
@@ -67,7 +109,7 @@ add_action('template_redirect', function () {
         return;
     }
 
-    if (function_exists('VMP\\setup_virtual_store_page')) {
+    if (function_exists('VMP\setup_virtual_store_page')) {
         \VMP\setup_virtual_store_page();
     }
 }, 1);

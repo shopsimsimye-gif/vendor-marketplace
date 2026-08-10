@@ -7,6 +7,7 @@ use VMP\Modules\AI\AIOrchestrator;
 use VMP\Modules\AI\Repositories\AIJobRepository;
 use VMP\Modules\AI\RetryPolicy;
 use VMP\Modules\AI\CircuitBreaker;
+use VMP\Modules\AI\Prompts\GenerateSEOKeywordsPrompt;
 
 /**
  * Class GenerateKeywordsStep
@@ -17,32 +18,49 @@ use VMP\Modules\AI\CircuitBreaker;
  */
 class GenerateKeywordsStep implements WorkflowStepInterface
 {
-    private AIOrchestrator $orchestrator;
-    private AIJobRepository $jobs;
-    private RetryPolicy $retry;
-    private CircuitBreaker $circuitBreaker;
-
     public function __construct(
-        AIOrchestrator $orchestrator,
-        AIJobRepository $jobs,
-        RetryPolicy $retry,
-        CircuitBreaker $circuitBreaker
+        private AIOrchestrator $orchestrator,
+        private AIJobRepository $jobs,
+        private RetryPolicy $retry,
+        private CircuitBreaker $circuitBreaker
     ) {
-        $this->orchestrator = $orchestrator;
-        $this->jobs = $jobs;
-        $this->retry = $retry;
-        $this->circuitBreaker = $circuitBreaker;
     }
 
-    public function execute(WorkflowContext $context): WorkflowContext
+    public function handle(WorkflowContext $context): WorkflowContext
     {
-        $keywords = $this->orchestrator->generateKeywords($context->get('product_data', []));
-        $context->set('keywords', $keywords);
+        $jobId = (string) $context->get('job_id');
+        $this->jobs->updateStatus($jobId, \VMP\Modules\AI\States\AIProductWorkflowState::GENERATING_KEYWORDS);
+        $this->jobs->updateProgress($jobId, 90);
+        $this->jobs->appendLog($jobId, 'info', 'Generating SEO keywords');
+
+        $prompt = new GenerateSEOKeywordsPrompt();
+        $messages = $prompt->messages($context->all());
+
+        $attempt = 0;
+        while (true) {
+            $attempt++;
+            try {
+                if ($this->circuitBreaker->isOpen('llm')) {
+                    $this->jobs->appendLog($jobId, 'warning', 'LLM provider circuit open, skipping keywords generation');
+                    break;
+                }
+
+                $res = $this->orchestrator->generateSEOKeywords($messages);
+                $this->jobs->appendLog($jobId, 'info', 'Keywords generated', ['provider' => $res['provider'] ?? null]);
+                $this->circuitBreaker->recordSuccess($res['provider'] ?? 'llm');
+                $context->set('keywords', $res['keywords'] ?? []);
+                break;
+            } catch (\Throwable $e) {
+                $this->circuitBreaker->recordFailure('llm');
+                $this->jobs->appendLog($jobId, 'warning', 'Keywords generation failed: ' . $e->getMessage());
+                if (!$this->retry->shouldRetry($attempt)) {
+                    $this->jobs->markFailed($jobId, $e->getMessage());
+                    throw $e;
+                }
+                sleep($this->retry->nextDelay($attempt));
+            }
+        }
+
         return $context;
-    }
-
-    public function getName(): string
-    {
-        return 'generate_keywords';
     }
 }

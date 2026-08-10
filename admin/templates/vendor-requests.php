@@ -12,6 +12,12 @@ if (!current_user_can('manage_options') && !current_user_can('vmp_manage_vendors
 $status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : 'all';
 $paged = isset($_GET['paged']) ? max(1, absint($_GET['paged'])) : 1;
 $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+
+// The controller should provide these values. Keep safe defaults so the template
+// never emits PHP notices if loaded through an alternate admin renderer.
+$requests = isset($requests) && is_array($requests) ? $requests : (isset($requests) ? $requests : []);
+$stats = isset($stats) && is_array($stats) ? $stats : [];
+$totalPages = isset($totalPages) ? max(0, (int) $totalPages) : 0;
 ?>
 <div class="wrap vmp-vendor-requests-wrap">
     <h1 class="wp-heading-inline"><?php _e('طلبات البائعين', 'vmp'); ?></h1>

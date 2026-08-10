@@ -375,7 +375,7 @@
             });
         });
     });
-
+})(jQuery);
 // === Phase 4: AI + Media Library integration ===
 // [QA 2026-08-07] Migrated from wp.media to VMPMediaPicker (single source of truth).
 (function($) {

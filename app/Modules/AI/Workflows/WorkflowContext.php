@@ -47,17 +47,6 @@ class WorkflowContext
         return $this;
     }
 
-    /**
-     * Merge functionality helper.
-     *
-     * @param array $data Description index.
-     * @return self Output payload.
-     */
-    public function merge(array $data): self
-    {
-        $this->data = array_replace_recursive($this->data, $data);
-        return $this;
-    }
 
     /**
      * All functionality helper.
