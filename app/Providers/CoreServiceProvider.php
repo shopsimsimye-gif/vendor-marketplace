@@ -198,7 +198,9 @@ class CoreServiceProvider extends ServiceProvider
         });
 
         $this->container->singleton(VendorRequestRepositoryInterface::class, function () {
-            return $this->container->make(VendorRequestRepository::class);
+            return new \VMP\Repositories\Cached\CachedVendorRequestRepository(
+                $this->container->make(VendorRequestRepository::class)
+            );
         });
 
         $this->container->singleton(MediaRepositoryInterface::class, function () {
@@ -209,9 +211,9 @@ class CoreServiceProvider extends ServiceProvider
 
         
         $interfaceMap = [
-            OrderRepositoryInterface::class           => OrderRepository::class,
-            CommissionRepositoryInterface::class      => CommissionRepository::class,
-            WithdrawalRepositoryInterface::class      => WithdrawalRepository::class,
+            OrderRepositoryInterface::class           => \VMP\Repositories\Cached\CachedOrderRepository::class,
+            CommissionRepositoryInterface::class      => \VMP\Repositories\Cached\CachedCommissionRepository::class,
+            WithdrawalRepositoryInterface::class      => \VMP\Repositories\Cached\CachedWithdrawalRepository::class,
             SubscriptionRepositoryInterface::class    => SubscriptionRepository::class,
             SubscriptionPlanRepositoryInterface::class=> SubscriptionPlanRepository::class,
         ];
