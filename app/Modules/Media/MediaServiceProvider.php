@@ -122,7 +122,7 @@ class MediaServiceProvider extends ServiceProvider
      */
     private function runMigrations(): void
     {
-        $migrationFile = VMP_PLUGIN_DIR . 'app/Database/Migrations/009_create_vmp_media_tables.php';
+        $migrationFile = VMP_PLUGIN_DIR . 'app/Database/Migrations/CreateVmpMediaTables.php';
         if (is_file($migrationFile)) {
             require_once $migrationFile;
             \VMP\Database\Migrations\CreateVmpMediaTables::up();
