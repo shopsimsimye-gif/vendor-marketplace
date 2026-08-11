@@ -36,7 +36,6 @@ use VMP\Providers\ServiceProvider;
 use VMP\Modules\AI\CircuitBreaker;
 use VMP\Modules\AI\ProviderHealthScore;
 use VMP\Modules\AI\RetryPolicy;
-use VMP\Support\CacheManager;
 use VMP\Services\SubscriptionService;
 
 class AIServiceProvider extends ServiceProvider
@@ -87,16 +86,11 @@ class AIServiceProvider extends ServiceProvider
 
         $this->container->singleton(ProviderHealth::class, fn(): ProviderHealth => new ProviderHealth());
 
-        $this->container->singleton(CacheManager::class, fn(): CacheManager => CacheManager::getInstance());
         $this->container->singleton(RetryPolicy::class, fn(): RetryPolicy => new RetryPolicy());
 
-        $this->container->singleton(CircuitBreaker::class, fn(): CircuitBreaker => new CircuitBreaker(
-            $this->container->make(CacheManager::class)
-        ));
+        $this->container->singleton(CircuitBreaker::class, fn(): CircuitBreaker => new CircuitBreaker());
 
-        $this->container->singleton(ProviderHealthScore::class, fn(): ProviderHealthScore => new ProviderHealthScore(
-            $this->container->make(CacheManager::class)
-        ));
+        $this->container->singleton(ProviderHealthScore::class, fn(): ProviderHealthScore => new ProviderHealthScore());
 
         $this->container->singleton(ProviderFailover::class, fn(): ProviderFailover => new ProviderFailover(
             $this->container->make(CapabilityRegistry::class),

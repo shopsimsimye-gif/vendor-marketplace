@@ -3,14 +3,13 @@ namespace VMP\Modules\AI;
 
 defined('ABSPATH') || exit;
 
-use VMP\Support\CacheManager;
+use VMP\Support\Cache\Manager as CacheManager;
 
 /**
  * Circuit Breaker with half-open state and exponential backoff.
  */
 class CircuitBreaker
 {
-    private CacheManager $cache;
     private string $prefix = 'vmp_cb_';
 
     // Configurable thresholds
@@ -19,12 +18,10 @@ class CircuitBreaker
     private int $halfOpenMaxCalls;
 
     public function __construct(
-        CacheManager $cache,
         int $failureThreshold = 5,
         int $timeoutSeconds = 60,
         int $halfOpenMaxCalls = 3
     ) {
-        $this->cache = $cache;
         $this->failureThreshold = $failureThreshold;
         $this->timeoutSeconds = $timeoutSeconds;
         $this->halfOpenMaxCalls = $halfOpenMaxCalls;
@@ -35,14 +32,15 @@ class CircuitBreaker
      */
     public function getState(string $provider): \VMP\Modules\AI\CircuitBreakerState
     {
-        $state = $this->cache->get($this->key('state', $provider));
+        $state = CacheManager::get($this->key('state', $provider));
 
-        if ($state === null) {
+        // لا يوجد كاش بعد، أو قيمة غير صالحة => افتراضياً CLOSED
+        if ($state === null || $state === false || $state === '') {
             return new CircuitBreakerState(CircuitBreakerState::CLOSED);
         }
 
         if ($state === 'open') {
-            $openedAt = (int) $this->cache->get($this->key('opened_at', $provider));
+            $openedAt = (int) CacheManager::get($this->key('opened_at', $provider));
             if ((time() - $openedAt) >= $this->timeoutSeconds) {
                 // Timeout expired — transition to half-open
                 $this->transitionTo($provider, new CircuitBreakerState(CircuitBreakerState::HALF_OPEN));
@@ -59,18 +57,18 @@ class CircuitBreaker
      */
     public function allowRequest(string $provider): bool
     {
-        $state = $this->getState($provider);
+        $state = $this->getState($provider)->value();
 
-        if ($state === new CircuitBreakerState(CircuitBreakerState::CLOSED)) {
+        if ($state === CircuitBreakerState::CLOSED) {
             return true;
         }
 
-        if ($state === new CircuitBreakerState(CircuitBreakerState::OPEN)) {
+        if ($state === CircuitBreakerState::OPEN) {
             return false;
         }
 
         // HALF_OPEN — allow limited test calls
-        $testCalls = (int) $this->cache->get($this->key('test_calls', $provider));
+        $testCalls = (int) CacheManager::get($this->key('test_calls', $provider));
         return $testCalls < $this->halfOpenMaxCalls;
     }
 
@@ -79,11 +77,11 @@ class CircuitBreaker
      */
     public function recordSuccess(string $provider): void
     {
-        $state = $this->getState($provider);
+        $state = $this->getState($provider)->value();
 
-        if ($state === new CircuitBreakerState(CircuitBreakerState::HALF_OPEN)) {
-            $successes = (int) $this->cache->get($this->key('test_successes', $provider)) + 1;
-            $this->cache->set($this->key('test_successes', $provider), $successes, $this->timeoutSeconds);
+        if ($state === CircuitBreakerState::HALF_OPEN) {
+            $successes = (int) CacheManager::get($this->key('test_successes', $provider)) + 1;
+            CacheManager::set($this->key('test_successes', $provider), $successes, $this->timeoutSeconds);
 
             if ($successes >= $this->halfOpenMaxCalls) {
                 $this->transitionTo($provider, new CircuitBreakerState(CircuitBreakerState::CLOSED));
@@ -91,7 +89,7 @@ class CircuitBreaker
         }
 
         // Reset failure count in closed state
-        $this->cache->delete($this->key('failures', $provider));
+        CacheManager::delete($this->key('failures', $provider));
     }
 
     /**
@@ -99,16 +97,16 @@ class CircuitBreaker
      */
     public function recordFailure(string $provider): void
     {
-        $state = $this->getState($provider);
+        $state = $this->getState($provider)->value();
 
-        if ($state === new CircuitBreakerState(CircuitBreakerState::HALF_OPEN)) {
+        if ($state === CircuitBreakerState::HALF_OPEN) {
             // Any failure in half-open immediately trips back to open
             $this->transitionTo($provider, new CircuitBreakerState(CircuitBreakerState::OPEN));
             return;
         }
 
-        $failures = (int) $this->cache->get($this->key('failures', $provider)) + 1;
-        $this->cache->set($this->key('failures', $provider), $failures, $this->timeoutSeconds * 2);
+        $failures = (int) CacheManager::get($this->key('failures', $provider)) + 1;
+        CacheManager::set($this->key('failures', $provider), $failures, $this->timeoutSeconds * 2);
 
         if ($failures >= $this->failureThreshold) {
             $this->transitionTo($provider, new CircuitBreakerState(CircuitBreakerState::OPEN));
@@ -120,18 +118,18 @@ class CircuitBreaker
      */
     private function transitionTo(string $provider, CircuitBreakerState $newState): void
     {
-        $this->cache->set($this->key('state', $provider), $newState->value(), $this->timeoutSeconds * 2);
+        CacheManager::set($this->key('state', $provider), $newState->value(), $this->timeoutSeconds * 2);
 
-        if ($newState === new CircuitBreakerState(CircuitBreakerState::OPEN)) {
-            $this->cache->set($this->key('opened_at', $provider), time(), $this->timeoutSeconds * 2);
-        } elseif ($newState === new CircuitBreakerState(CircuitBreakerState::HALF_OPEN)) {
-            $this->cache->set($this->key('test_calls', $provider), 0, $this->timeoutSeconds);
-            $this->cache->set($this->key('test_successes', $provider), 0, $this->timeoutSeconds);
-        } elseif ($newState === new CircuitBreakerState(CircuitBreakerState::CLOSED)) {
-            $this->cache->delete($this->key('failures', $provider));
-            $this->cache->delete($this->key('opened_at', $provider));
-            $this->cache->delete($this->key('test_calls', $provider));
-            $this->cache->delete($this->key('test_successes', $provider));
+        if ($newState->value() === CircuitBreakerState::OPEN) {
+            CacheManager::set($this->key('opened_at', $provider), time(), $this->timeoutSeconds * 2);
+        } elseif ($newState->value() === CircuitBreakerState::HALF_OPEN) {
+            CacheManager::set($this->key('test_calls', $provider), 0, $this->timeoutSeconds);
+            CacheManager::set($this->key('test_successes', $provider), 0, $this->timeoutSeconds);
+        } elseif ($newState->value() === CircuitBreakerState::CLOSED) {
+            CacheManager::delete($this->key('failures', $provider));
+            CacheManager::delete($this->key('opened_at', $provider));
+            CacheManager::delete($this->key('test_calls', $provider));
+            CacheManager::delete($this->key('test_successes', $provider));
         }
     }
 

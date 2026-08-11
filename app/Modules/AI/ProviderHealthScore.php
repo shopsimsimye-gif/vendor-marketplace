@@ -3,7 +3,7 @@ namespace VMP\Modules\AI;
 
 defined('ABSPATH') || exit;
 
-use VMP\Support\CacheManager;
+use VMP\Support\Cache\Manager as CacheManager;
 
 /**
  * Calculates a composite health score for AI providers.
@@ -16,7 +16,6 @@ use VMP\Support\CacheManager;
  */
 class ProviderHealthScore
 {
-    private CacheManager $cache;
     private string $prefix = 'vmp_health_';
 
     // Weight configuration
@@ -27,10 +26,7 @@ class ProviderHealthScore
         'recency'      => 0.10,
     ];
 
-    public function __construct(CacheManager $cache)
-    {
-        $this->cache = $cache;
-    }
+    public function __construct() {}
 
     /**
      * Record a provider call result.
@@ -38,7 +34,7 @@ class ProviderHealthScore
     public function record(string $provider, bool $success, float $latencyMs, float $cost = 0.0): void
     {
         $key = $this->prefix . 'calls_' . md5($provider);
-        $calls = $this->cache->get($key) ?: [];
+        $calls = CacheManager::get($key) ?: [];
 
         $calls[] = [
             'success'   => $success,
@@ -52,7 +48,7 @@ class ProviderHealthScore
             $calls = array_slice($calls, -100);
         }
 
-        $this->cache->set($key, $calls, 86400); // 24 hours
+        CacheManager::set($key, $calls, 86400); // 24 hours
     }
 
     /**
@@ -61,7 +57,7 @@ class ProviderHealthScore
     public function score(string $provider): float
     {
         $key = $this->prefix . 'calls_' . md5($provider);
-        $calls = $this->cache->get($key) ?: [];
+        $calls = CacheManager::get($key) ?: [];
 
         if (empty($calls)) {
             return 0.5; // Neutral score for unknown providers
